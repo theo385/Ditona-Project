@@ -1,6 +1,6 @@
 import { data } from "./store.js";
 import { escapeHtml, money } from "./format.js";
-import { currentLanguage, t, tr, translateDom } from "./i18n.js";
+import { currentLanguage, t, tr } from "./i18n.js";
 
 let slideTimer = null;
 
@@ -16,14 +16,13 @@ export function setSlideTimer(timer) {
 export function logo(extra = "") {
   return `
     <div class="brand ${extra}">
-      <span class="logo-shell"><img src="/ditona-logo.png" alt="DITONA  ENGINEERING"></span>
+      <span class="logo-shell"><img src="/ditona-logo.png" alt="DITONA ENGINEERS"></span>
       <span class="brand-text">
         <strong>DITONA</strong>
-        <small> ENGINEERING</small>
+        <small>Engineers</small>
       </span>
     </div>
   `;
-  translateDom(document.querySelector("#app"));
 }
 
 export function navButton(label, path, active) {
@@ -32,12 +31,7 @@ export function navButton(label, path, active) {
 
 export function mediaTag(item, alt = "DITONA") {
   if (item?.type === "video") return `<video src="${item.image}" autoplay muted loop playsinline></video>`;
-  return `<img src="${item?.image}" alt="${escapeHtml(item?.title || alt)}" ${previewAttrs(item, alt)}>`;
-}
-
-function previewAttrs(item, alt = "DITONA") {
-  if (!item?.image) return "";
-  return `class="clickable-media" data-image-preview data-preview-title="${escapeHtml(tr(item.title || item.name || alt))}" data-preview-text="${escapeHtml(tr(item.subtitle || item.description || item.comment || item.text || ""))}" data-preview-front="${escapeHtml(item.image)}" data-preview-back="${escapeHtml(item.backImage || item.image)}"`;
+  return `<img src="${item?.image}" alt="${escapeHtml(item?.title || alt)}">`;
 }
 
 export function visualTitle(key, eyebrow) {
@@ -62,7 +56,6 @@ export function publicShell(content, active = "") {
             <option value="fr" ${currentLanguage() === "fr" ? "selected" : ""}>Francais</option>
             <option value="en" ${currentLanguage() === "en" ? "selected" : ""}>English</option>
             <option value="pt" ${currentLanguage() === "pt" ? "selected" : ""}>Portugues</option>
-            <option value="zh" ${currentLanguage() === "zh" ? "selected" : ""}>中文</option>
 </select>
         </label>
         <button class="primary header-cta" data-link="/machines">${t("action.order")}</button>
@@ -144,7 +137,7 @@ export function chatWidget() {
 export function machineMini(machine) {
   return `
     <article class="machine-mini">
-      <img src="${machine.image}" alt="${escapeHtml(tr(machine.name))}" ${previewAttrs(machine)}>
+      <img src="${machine.image}" alt="${escapeHtml(tr(machine.name))}">
       <div>
         <strong>${escapeHtml(tr(machine.name))}</strong>
         <span>${escapeHtml(tr(machine.comment))}</span>
@@ -156,7 +149,7 @@ export function machineMini(machine) {
 export function machineCard(machine) {
   return `
     <article class="item-card">
-      <img src="${machine.image}" alt="${escapeHtml(tr(machine.name))}" ${previewAttrs(machine)}>
+      <img src="${machine.image}" alt="${escapeHtml(tr(machine.name))}">
       <div class="item-body">
         <span class="pill">${escapeHtml(tr(machine.category))}</span>
         <h3>${escapeHtml(tr(machine.name))}</h3>
@@ -195,7 +188,7 @@ export function realisationCard(item) {
   const stars = Array.from({ length: 5 }, (_, index) => `<span class="${index < rating ? "filled" : ""}">&#9733;</span>`).join("");
   return `
     <article class="item-card">
-      <img src="${item.image}" alt="${escapeHtml(tr(item.title))}" ${previewAttrs(item)}>
+      <img src="${item.image}" alt="${escapeHtml(tr(item.title))}">
       <div class="item-body">
         <h3>${escapeHtml(tr(item.title))}</h3>
         <p>${escapeHtml(tr(item.comment))}</p>
@@ -215,7 +208,7 @@ export function realisationCard(item) {
 export function serviceCard(service) {
   return `
     <article class="service-card">
-      <img src="${service.image}" alt="${escapeHtml(tr(service.title))}" ${previewAttrs(service)}>
+      <img src="${service.image}" alt="${escapeHtml(tr(service.title))}">
       <div>
         <h3>${escapeHtml(tr(service.title))}</h3>
         <p>${escapeHtml(tr(service.text))}</p>
