@@ -10,11 +10,11 @@ export function clone(value) {
 
 export function loadData() {
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return clone(defaults);
+  if (!saved) return normalizeData(clone(defaults));
   try {
     const parsed = JSON.parse(saved);
     const slides = parsed.homeMedia || parsed.heroSlides;
-    return {
+    return normalizeData({
       ...clone(defaults),
       ...parsed,
       homeMedia: slides?.length ? slides : clone(defaults.homeMedia),
@@ -27,10 +27,54 @@ export function loadData() {
       orders: parsed.orders || [],
       appointments: parsed.appointments || [],
       trainingRequests: parsed.trainingRequests || [],
-    };
+    });
   } catch {
-    return clone(defaults);
+    return normalizeData(clone(defaults));
   }
+}
+
+function normalizeImage(item, fallback = {}) {
+  const image = String(item?.image || "");
+  const backImage = String(item?.backImage || "");
+  return {
+    ...item,
+    title: normalizeBrandText(item?.title),
+    subtitle: normalizeBrandText(item?.subtitle),
+    name: normalizeBrandText(item?.name),
+    image: image.includes("images.unsplash.com") ? fallback.image || "/realisations/cnc-3w-iso.jpeg" : image,
+    backImage: backImage.includes("images.unsplash.com") ? fallback.backImage || fallback.image || item.image : backImage || item.backImage || fallback.backImage || item.image,
+  };
+}
+
+function normalizeBrandText(value) {
+  if (typeof value !== "string") return value;
+  return value
+    .replaceAll("DITONA ENGINEERS", "DITONA Engineering")
+    .replaceAll("DITONA  ENGINEERS", "DITONA Engineering")
+    .replaceAll("DITONA Engineers", "DITONA Engineering")
+    .replaceAll("Ingenieur DITONA", "DITONA Engineering")
+    .replaceAll("l'ingenieur DITONA", "DITONA Engineering")
+    .replaceAll("l'equipe", "l'equipe");
+}
+
+function normalizeCollection(items = [], fallbacks = []) {
+  return items.map((item, index) => {
+    const fallback = fallbacks.find((row) => String(row.id) === String(item.id)) || fallbacks[index] || {};
+    return normalizeImage(item, fallback);
+  });
+}
+
+function normalizeData(next) {
+  const fallback = clone(defaults);
+  return {
+    ...next,
+    sectionMedia: Object.fromEntries(Object.entries(next.sectionMedia || {}).map(([key, item]) => [key, normalizeImage(item, fallback.sectionMedia[key])])),
+    homeMedia: normalizeCollection(next.homeMedia, fallback.homeMedia),
+    homeProof: normalizeCollection(next.homeProof, fallback.homeProof),
+    machines: normalizeCollection(next.machines, fallback.machines),
+    realisations: normalizeCollection(next.realisations, fallback.realisations),
+    services: normalizeCollection(next.services, fallback.services),
+  };
 }
 
 export let data = loadData();

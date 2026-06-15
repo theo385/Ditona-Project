@@ -128,7 +128,9 @@ export function adminSections() {
       <label>Titre<input name="title" required></label>
       <label>Sous-titre<textarea name="subtitle" rows="3" required></textarea></label>
       <label>Media local<input name="imageFile" type="file" accept="image/*,video/*"></label>
+      <label>Verso local<input name="backImageFile" type="file" accept="image/*"></label>
       <input name="image" placeholder="URL image ou video">
+      <input name="backImage" placeholder="URL verso facultative">
       <button class="primary">Enregistrer le media de section</button>
     </form>
     <div class="admin-list">${Object.entries(data.sectionMedia).map(([key, item]) => adminItem({ ...item, id: key, name: labels[key] || key, comment: item.title }, "section")).join("")}</div>
@@ -146,7 +148,9 @@ export function adminHome() {
       <label>Type<select name="type"><option>image</option><option>video</option></select></label>
       <label>Sous-titre<textarea name="subtitle" rows="3" required></textarea></label>
       <label>Media<input name="imageFile" type="file" accept="image/*,video/*"></label>
+      <label>Verso<input name="backImageFile" type="file" accept="image/*"></label>
       <input name="image" placeholder="URL image ou video">
+      <input name="backImage" placeholder="URL verso facultative">
       <button class="primary">Enregistrer</button>
       <button class="ghost" type="reset">Nouveau media</button>
     </form>
@@ -158,7 +162,9 @@ export function adminHome() {
       <label>Type<select name="type"><option>image</option><option>video</option></select></label>
       <label>Sous-titre<textarea name="subtitle" rows="3" required></textarea></label>
       <label>Media<input name="imageFile" type="file" accept="image/*,video/*"></label>
+      <label>Verso<input name="backImageFile" type="file" accept="image/*"></label>
       <input name="image" placeholder="URL image ou video">
+      <input name="backImage" placeholder="URL verso facultative">
       <button class="primary">Enregistrer l'image du bas</button>
       <button class="ghost" type="reset">Nouveau visuel</button>
     </form>
@@ -181,7 +187,9 @@ export function adminMachines() {
       <label>Description<textarea name="description" rows="3" required></textarea></label>
       <label>Commentaire<textarea name="comment" rows="3"></textarea></label>
       <label>Image<input name="imageFile" type="file" accept="image/*"></label>
+      <label>Image verso<input name="backImageFile" type="file" accept="image/*"></label>
       <input name="image" placeholder="URL image">
+      <input name="backImage" placeholder="URL verso facultative">
       <button class="primary">Enregistrer</button>
       <button class="ghost" type="reset">Nouveau</button>
     </form>
@@ -202,7 +210,9 @@ export function adminRealisations() {
       <label>Commentaire<textarea name="comment" rows="3" required></textarea></label>
       <label>Avis client<textarea name="review" rows="3" placeholder="Ex: Client satisfait par la qualite du travail."></textarea></label>
       <label>Image<input name="imageFile" type="file" accept="image/*"></label>
+      <label>Image verso<input name="backImageFile" type="file" accept="image/*"></label>
       <input name="image" placeholder="URL image">
+      <input name="backImage" placeholder="URL verso facultative">
       <button class="primary">Enregistrer</button>
       <button class="ghost" type="reset">Nouveau</button>
     </form>
@@ -219,8 +229,10 @@ export function adminServices() {
       <input name="id" type="hidden">
       <label>Titre<input name="title" required></label>
       <label>Image<input name="imageFile" type="file" accept="image/*"></label>
+      <label>Image verso<input name="backImageFile" type="file" accept="image/*"></label>
       <label>Description<textarea name="text" rows="4" required></textarea></label>
       <input name="image" placeholder="URL image">
+      <input name="backImage" placeholder="URL verso facultative">
       <button class="primary">Enregistrer</button>
       <button class="ghost" type="reset">Nouveau</button>
     </form>
@@ -304,7 +316,8 @@ function bindHomeForm() {
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = data.homeMedia.find((s) => s.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image);
-    const next = { id, title: fd.get("title"), subtitle: fd.get("subtitle"), type: fd.get("type"), image };
+    const backImage = await readImage(form.backImageFile, fd.get("backImage") || existing?.backImage || image);
+    const next = { id, title: fd.get("title"), subtitle: fd.get("subtitle"), type: fd.get("type"), image, backImage };
     data.homeMedia = existing ? data.homeMedia.map((s) => s.id === id ? next : s) : [next, ...data.homeMedia];
     saveData();
     adminHome();
@@ -319,7 +332,8 @@ function bindHomeProofForm() {
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = (data.homeProof || []).find((s) => s.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image);
-    const next = { id, title: fd.get("title"), subtitle: fd.get("subtitle"), type: fd.get("type"), image };
+    const backImage = await readImage(form.backImageFile, fd.get("backImage") || existing?.backImage || image);
+    const next = { id, title: fd.get("title"), subtitle: fd.get("subtitle"), type: fd.get("type"), image, backImage };
     data.homeProof = existing ? data.homeProof.map((s) => s.id === id ? next : s) : [next, ...(data.homeProof || [])];
     saveData();
     adminHome();
@@ -334,7 +348,8 @@ function bindMachineForm() {
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = data.machines.find((m) => m.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image);
-    const next = { id, name: fd.get("name"), category: fd.get("category"), price: Number(fd.get("price")) || null, status: fd.get("status"), description: fd.get("description"), comment: fd.get("comment"), image };
+    const backImage = await readImage(form.backImageFile, fd.get("backImage") || existing?.backImage || image);
+    const next = { id, name: fd.get("name"), category: fd.get("category"), price: Number(fd.get("price")) || null, status: fd.get("status"), description: fd.get("description"), comment: fd.get("comment"), image, backImage };
     data.machines = existing ? data.machines.map((m) => m.id === id ? next : m) : [next, ...data.machines];
     saveData();
     adminMachines();
@@ -349,8 +364,9 @@ function bindRealisationForm() {
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = data.realisations.find((r) => r.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image);
+    const backImage = await readImage(form.backImageFile, fd.get("backImage") || existing?.backImage || image);
     const rating = Math.max(0, Math.min(5, Number(fd.get("rating")) || 0));
-    const next = { id, title: fd.get("title"), price: Number(fd.get("price")) || null, rating, review: fd.get("review"), comment: fd.get("comment"), image };
+    const next = { id, title: fd.get("title"), price: Number(fd.get("price")) || null, rating, review: fd.get("review"), comment: fd.get("comment"), image, backImage };
     data.realisations = existing ? data.realisations.map((r) => r.id === id ? next : r) : [next, ...data.realisations];
     saveData();
     adminRealisations();
@@ -365,6 +381,7 @@ function bindSectionMediaForm() {
     form.title.value = item.title || "";
     form.subtitle.value = item.subtitle || "";
     form.image.value = item.image || "";
+    form.backImage.value = item.backImage || "";
   };
   form.key.addEventListener("change", load);
   form.addEventListener("submit", async (event) => {
@@ -373,7 +390,8 @@ function bindSectionMediaForm() {
     const key = fd.get("key");
     const existing = data.sectionMedia[key] || {};
     const image = await readImage(form.imageFile, fd.get("image") || existing.image);
-    data.sectionMedia[key] = { type: fd.get("type"), title: fd.get("title"), subtitle: fd.get("subtitle"), image };
+    const backImage = await readImage(form.backImageFile, fd.get("backImage") || existing.backImage || image);
+    data.sectionMedia[key] = { type: fd.get("type"), title: fd.get("title"), subtitle: fd.get("subtitle"), image, backImage };
     saveData();
     adminSections();
   });
@@ -388,7 +406,8 @@ function bindServiceForm() {
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = data.services.find((s) => s.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image);
-    const next = { id, title: fd.get("title"), text: fd.get("text"), image };
+    const backImage = await readImage(form.backImageFile, fd.get("backImage") || existing?.backImage || image);
+    const next = { id, title: fd.get("title"), text: fd.get("text"), image, backImage, target: existing?.target || "/services" };
     data.services = existing ? data.services.map((s) => s.id === id ? next : s) : [next, ...data.services];
     saveData();
     adminServices();

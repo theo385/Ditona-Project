@@ -10,7 +10,7 @@ export function homePage() {
         <article class="cinema-slide ${index === 0 ? "active" : ""}" data-slide="${index}">
           ${mediaTag(item)}
           <div class="cinema-caption">
-            <p class="eyebrow">DITONA  ENGINEERING</p>
+            <p class="eyebrow">${t("home.eyebrow")}</p>
             <h1>${tr(item.title)}</h1>
             <p>${tr(item.subtitle)}</p>
           </div>
@@ -23,7 +23,7 @@ export function homePage() {
     </section>
     <section class="home-proof">
       ${(data.homeProof || []).slice(0, 3).filter(Boolean).map((item) => `
-        <article>
+        <article data-link="${item.target || "/realisations"}" class="click-card">
           ${mediaTag(item)}
           <div><strong>${tr(item.title)}</strong><span>${tr(item.subtitle || "")}</span></div>
         </article>
@@ -33,7 +33,7 @@ export function homePage() {
       <div class="section-head"><div><p class="eyebrow">${t("home.eyebrow")}</p><h2>${t("home.what")}</h2></div></div>
       <div class="focus-grid">
         ${data.services.slice(0, 4).map((service) => `
-          <article>
+          <article data-link="${service.target || "/services"}" class="click-card">
             <h3>${tr(service.title)}</h3>
             <p>${tr(service.text)}</p>
           </article>

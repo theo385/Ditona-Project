@@ -18,6 +18,7 @@ import {
 import { messageThread, requestThread } from "./components.js";
 import { data, saveData, today } from "./store.js";
 import { setLanguage } from "./i18n.js";
+import { escapeHtml } from "./format.js";
 import {
   aboutPage,
   appointmentPage,
@@ -46,6 +47,10 @@ function bindGlobal() {
     bindGlobal();
   }));
   document.querySelectorAll("[data-order]").forEach((el) => el.addEventListener("click", () => orderMachine(el.dataset.order)));
+  document.querySelectorAll("[data-image-preview]").forEach((el) => el.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openImagePreview(el.dataset);
+  }));
   document.querySelector("[data-search-go]")?.addEventListener("click", () => go("/machines"));
   document.querySelector("[data-site-search]")?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") go("/machines");
@@ -63,6 +68,30 @@ function bindGlobal() {
   document.querySelector("[data-logout]")?.addEventListener("click", logout);
   bindChatbot();
   bindAdminActions();
+}
+
+function openImagePreview(preview) {
+  document.querySelector("[data-image-modal]")?.remove();
+  document.body.insertAdjacentHTML("beforeend", `
+    <section class="modal-backdrop image-modal-backdrop" data-image-modal>
+      <article class="panel image-modal">
+        <div class="modal-head">
+          <div><p class="eyebrow">Details</p><h2>${escapeHtml(preview.previewTitle || "DITONA")}</h2></div>
+          <button type="button" class="ghost small" data-close-image-modal>Fermer</button>
+        </div>
+        ${preview.previewText ? `<p class="image-modal-text">${escapeHtml(preview.previewText)}</p>` : ""}
+        <div class="image-sides">
+          <figure><img src="${escapeHtml(preview.previewFront)}" alt="${escapeHtml(preview.previewTitle || "Recto")}"><figcaption>Recto</figcaption></figure>
+          <figure><img src="${escapeHtml(preview.previewBack || preview.previewFront)}" alt="${escapeHtml(preview.previewTitle || "Verso")}"><figcaption>Verso</figcaption></figure>
+        </div>
+      </article>
+    </section>
+  `);
+  const close = () => document.querySelector("[data-image-modal]")?.remove();
+  document.querySelector("[data-close-image-modal]")?.addEventListener("click", close);
+  document.querySelector("[data-image-modal]")?.addEventListener("click", (event) => {
+    if (event.target.matches("[data-image-modal]")) close();
+  });
 }
 
 function bindChatbot() {
