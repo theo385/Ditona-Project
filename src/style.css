@@ -839,7 +839,7 @@ label {
   min-height: 100vh;
   padding: 20px;
   background:
-    linear-gradient(135deg, rgba(11,23,38,.92), rgba(8,127,91,.78)),
+    linear-gradient(135deg, rgba(11,23,38,.92), rgba(71, 8, 127, 0.78)),
     url("/realisations/ligne-remplissage.jpeg") center/cover;
 }
 
