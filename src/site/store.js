@@ -49,9 +49,9 @@ function normalizeImage(item, fallback = {}) {
 function normalizeBrandText(value) {
   if (typeof value !== "string") return value;
   return value
-    .replaceAll("DITONA ENGINEERS", "DITONA Engineering")
-    .replaceAll("DITONA  ENGINEERS", "DITONA Engineering")
-    .replaceAll("DITONA Engineers", "DITONA Engineering")
+    .replaceAll("DITONA ENGINEERING", "DITONA Engineering")
+    .replaceAll("DITONA  ENGINEERING", "DITONA Engineering")
+    .replaceAll("DITONA Engineering", "DITONA Engineering")
     .replaceAll("Ingenieur DITONA", "DITONA Engineering")
     .replaceAll("l'ingenieur DITONA", "DITONA Engineering")
     .replaceAll("l'equipe", "l'equipe");

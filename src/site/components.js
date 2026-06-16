@@ -16,10 +16,10 @@ export function setSlideTimer(timer) {
 export function logo(extra = "") {
   return `
     <div class="brand ${extra}">
-      <span class="logo-shell"><img src="/ditona-logo.png" alt="DITONA ENGINEERS"></span>
+      <span class="logo-shell"><img src="/ditona-logo.png" alt="DITONA ENGINEERING"></span>
       <span class="brand-text">
         <strong>DITONA</strong>
-        <small>Engineers</small>
+        <small>Engineering</small>
       </span>
     </div>
   `;
