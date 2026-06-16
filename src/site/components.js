@@ -1,6 +1,6 @@
 import { data } from "./store.js";
 import { escapeHtml, money } from "./format.js";
-import { currentLanguage, t, tr } from "./i18n.js";
+import { currentLanguage, t, tr, translateDom } from "./i18n.js";
 
 let slideTimer = null;
 
@@ -60,6 +60,9 @@ export function publicShell(content, active = "") {
         </label>
         <button class="primary header-cta" data-link="/machines">${t("action.order")}</button>
         <button class="header-action login-action" data-link="/login" title="${t("action.login")}"><span class="user-icon"></span><small>${t("action.login")}</small></button>
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
       </div>
       <div class="site-header-row2">
         <nav class="site-nav" id="main-nav">
@@ -77,12 +80,9 @@ export function publicShell(content, active = "") {
           <button class="primary small" data-search-go>${t("action.search")}</button>
         </div>
       </div>
-      <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">
-        <span></span><span></span><span></span>
-      </button>
       <div class="mobile-nav-overlay" id="mobile-nav-overlay">
         <div class="mobile-nav-panel" id="mobile-nav-panel">
-          <button class="mobile-nav-close" id="mobile-nav-close">✕</button>
+          <button class="mobile-nav-close" id="mobile-nav-close">×</button>
           ${navButton(t("nav.home"), "/", active)}
           ${navButton(t("nav.machines"), "/machines", active)}
           ${navButton(t("nav.realisations"), "/realisations", active)}
@@ -91,6 +91,8 @@ export function publicShell(content, active = "") {
           ${navButton(t("nav.about"), "/about", active)}
           ${navButton(t("nav.appointment"), "/rendez-vous", active)}
           ${navButton(t("nav.contact"), "/contact", active)}
+          <div class="mobile-nav-spacer"></div>
+          <button class="mobile-login-link" data-link="/login">${t("action.login")}</button>
         </div>
       </div>
     </header>
@@ -139,6 +141,7 @@ export function publicShell(content, active = "") {
   closeBtn?.addEventListener("click", closeMenu);
   overlay?.addEventListener("click", (e) => { if (e.target === overlay) closeMenu(); });
   overlay?.querySelectorAll("button[data-link]").forEach(btn => btn.addEventListener("click", closeMenu));
+  translateDom(document.querySelector("#app"));
 }
 
 export function chatWidget() {
