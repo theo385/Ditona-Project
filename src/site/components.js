@@ -80,22 +80,22 @@ export function publicShell(content, active = "") {
           <button class="primary small" data-search-go>${t("action.search")}</button>
         </div>
       </div>
-      <div class="mobile-nav-overlay" id="mobile-nav-overlay">
-        <div class="mobile-nav-panel" id="mobile-nav-panel">
-          <button class="mobile-nav-close" id="mobile-nav-close">×</button>
-          ${navButton(t("nav.home"), "/", active)}
-          ${navButton(t("nav.machines"), "/machines", active)}
-          ${navButton(t("nav.realisations"), "/realisations", active)}
-          ${navButton(t("nav.services"), "/services", active)}
-          ${navButton(t("nav.training"), "/formation", active)}
-          ${navButton(t("nav.about"), "/about", active)}
-          ${navButton(t("nav.appointment"), "/rendez-vous", active)}
-          ${navButton(t("nav.contact"), "/contact", active)}
-          <div class="mobile-nav-spacer"></div>
-          <button class="mobile-login-link" data-link="/login">${t("action.login")}</button>
-        </div>
-      </div>
     </header>
+    <div class="mobile-nav-overlay" id="mobile-nav-overlay">
+      <div class="mobile-nav-panel" id="mobile-nav-panel">
+        <button class="mobile-nav-close" id="mobile-nav-close">×</button>
+        ${navButton(t("nav.home"), "/", active)}
+        ${navButton(t("nav.machines"), "/machines", active)}
+        ${navButton(t("nav.realisations"), "/realisations", active)}
+        ${navButton(t("nav.services"), "/services", active)}
+        ${navButton(t("nav.training"), "/formation", active)}
+        ${navButton(t("nav.about"), "/about", active)}
+        ${navButton(t("nav.appointment"), "/rendez-vous", active)}
+        ${navButton(t("nav.contact"), "/contact", active)}
+        <div class="mobile-nav-spacer"></div>
+        <button class="mobile-login-link" data-link="/login">${t("action.login")}</button>
+      </div>
+    </div>
     <main>${content}</main>
     ${chatWidget()}
     <footer class="site-footer">
@@ -131,16 +131,18 @@ export function publicShell(content, active = "") {
       <a href="https://wa.me/22870021225" target="_blank" rel="noopener">WhatsApp +228 70 02 12 25</a>
     </div>
   `;
-  // Hamburger menu logic
-  const hamburger = document.querySelector("#hamburger-btn");
-  const overlay = document.querySelector("#mobile-nav-overlay");
-  const closeBtn = document.querySelector("#mobile-nav-close");
-  const openMenu = () => { overlay?.classList.add("open"); document.body.style.overflow = "hidden"; };
-  const closeMenu = () => { overlay?.classList.remove("open"); document.body.style.overflow = ""; };
-  hamburger?.addEventListener("click", openMenu);
-  closeBtn?.addEventListener("click", closeMenu);
-  overlay?.addEventListener("click", (e) => { if (e.target === overlay) closeMenu(); });
-  overlay?.querySelectorAll("button[data-link]").forEach(btn => btn.addEventListener("click", closeMenu));
+  // Hamburger menu logic — setTimeout garantit que le DOM est prêt (fix Safari iOS)
+  setTimeout(() => {
+    const hamburger = document.querySelector("#hamburger-btn");
+    const overlay = document.querySelector("#mobile-nav-overlay");
+    const closeBtn = document.querySelector("#mobile-nav-close");
+    const openMenu = () => { overlay?.classList.add("open"); document.body.style.overflow = "hidden"; };
+    const closeMenu = () => { overlay?.classList.remove("open"); document.body.style.overflow = ""; };
+    hamburger?.addEventListener("click", openMenu);
+    closeBtn?.addEventListener("click", closeMenu);
+    overlay?.addEventListener("click", (e) => { if (e.target === overlay) closeMenu(); });
+    overlay?.querySelectorAll("button[data-link]").forEach(btn => btn.addEventListener("click", closeMenu));
+  }, 0);
   translateDom(document.querySelector("#app"));
 }
 
