@@ -1,5 +1,24 @@
+// ============================================================
+// DITONA Engineering — store.js
+// Données dynamiques (commandes, messages, RDV, formations)
+// synchronisées via Supabase. Machines/services restent en
+// localStorage pour les modifs admin offline.
+// ============================================================
+
 import { DEFAULT_ADMIN_PASSWORD, defaults } from "./defaults.js";
 
+// ── Supabase config ─────────────────────────────────────────
+const SUPABASE_URL = "https://zwbwsiyvoqdpxyqiylfb.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3YndzaXl2b3FkcHh5cWl5bGZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2ODc1MDcsImV4cCI6MjA5NzI2MzUwN30.6Kzstz0oEkkQATQVhKUMt1oMOaXnj8F_ouNXSINEDjc";
+
+const headers = {
+  "Content-Type": "application/json",
+  "apikey": SUPABASE_ANON_KEY,
+  "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+  "Prefer": "return=representation",
+};
+
+// ── Clés localStorage (uniquement pour contenu admin: machines, médias) ──
 export const STORAGE_KEY = "ditona_site_data_v3";
 export const SESSION_KEY = "ditona_admin_session";
 export const PASSWORD_KEY = "ditona_admin_password";
@@ -8,7 +27,72 @@ export function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-export function loadData() {
+// ── Helpers Supabase REST ────────────────────────────────────
+
+async function sbSelect(table, order = "created_at") {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}?order=${order}.desc`,
+      { headers }
+    );
+    if (!res.ok) throw new Error(await res.text());
+    return await res.json();
+  } catch (err) {
+    console.error(`[Supabase] SELECT ${table}:`, err);
+    return [];
+  }
+}
+
+async function sbInsert(table, row) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return await res.json();
+  } catch (err) {
+    console.error(`[Supabase] INSERT ${table}:`, err);
+    return null;
+  }
+}
+
+async function sbUpdate(table, id, updates) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(updates),
+      }
+    );
+    if (!res.ok) throw new Error(await res.text());
+    return true;
+  } catch (err) {
+    console.error(`[Supabase] UPDATE ${table}:`, err);
+    return false;
+  }
+}
+
+async function sbDelete(table, id) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+      { method: "DELETE", headers }
+    );
+    if (!res.ok) throw new Error(await res.text());
+    return true;
+  } catch (err) {
+    console.error(`[Supabase] DELETE ${table}:`, err);
+    return false;
+  }
+}
+
+// ── Chargement données locales (machines, médias, services) ─
+
+function loadLocalData() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (!saved) return normalizeData(clone(defaults));
   try {
@@ -23,10 +107,11 @@ export function loadData() {
       machines: parsed.machines?.length ? parsed.machines : clone(defaults.machines),
       realisations: parsed.realisations?.length ? parsed.realisations : clone(defaults.realisations),
       services: parsed.services?.length ? parsed.services : clone(defaults.services),
-      messages: parsed.messages || [],
-      orders: parsed.orders || [],
-      appointments: parsed.appointments || [],
-      trainingRequests: parsed.trainingRequests || [],
+      // Ces 4 collections viennent maintenant de Supabase
+      messages: [],
+      orders: [],
+      appointments: [],
+      trainingRequests: [],
     });
   } catch {
     return normalizeData(clone(defaults));
@@ -51,10 +136,8 @@ function normalizeBrandText(value) {
   return value
     .replaceAll("DITONA ENGINEERING", "DITONA Engineering")
     .replaceAll("DITONA  ENGINEERING", "DITONA Engineering")
-    .replaceAll("DITONA Engineering", "DITONA Engineering")
     .replaceAll("Ingenieur DITONA", "DITONA Engineering")
-    .replaceAll("l'ingenieur DITONA", "DITONA Engineering")
-    .replaceAll("l'equipe", "l'equipe");
+    .replaceAll("l'ingenieur DITONA", "DITONA Engineering");
 }
 
 function normalizeCollection(items = [], fallbacks = []) {
@@ -77,12 +160,110 @@ function normalizeData(next) {
   };
 }
 
-export let data = loadData();
+// ── Objet data principal ─────────────────────────────────────
+export let data = loadLocalData();
 
-export function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+// ── Charger les données Supabase au démarrage ────────────────
+export async function loadRemoteData() {
+  const [orders, messages, appointments, trainingRequests] = await Promise.all([
+    sbSelect("orders"),
+    sbSelect("messages"),
+    sbSelect("appointments"),
+    sbSelect("training_requests"),
+  ]);
+  data.orders = orders;
+  data.messages = messages;
+  data.appointments = appointments;
+  data.trainingRequests = trainingRequests;
 }
 
+// ── saveData : garde machines/médias en local uniquement ─────
+export function saveData() {
+  const localOnly = {
+    ...data,
+    messages: [],
+    orders: [],
+    appointments: [],
+    trainingRequests: [],
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(localOnly));
+}
+
+// ── API publique : ajouter une commande ──────────────────────
+export async function addOrder(order) {
+  const row = { ...order };
+  data.orders.unshift(row);
+  await sbInsert("orders", row);
+}
+
+// ── API publique : ajouter un message ───────────────────────
+export async function addMessage(message) {
+  const row = { ...message };
+  data.messages.unshift(row);
+  await sbInsert("messages", row);
+}
+
+// ── API publique : ajouter un rendez-vous ───────────────────
+export async function addAppointment(appointment) {
+  const row = { ...appointment };
+  data.appointments.unshift(row);
+  await sbInsert("appointments", row);
+}
+
+// ── API publique : ajouter une demande de formation ─────────
+export async function addTrainingRequest(request) {
+  const row = { ...request };
+  data.trainingRequests.unshift(row);
+  await sbInsert("training_requests", row);
+}
+
+// ── API admin : mettre à jour statut/réponse ─────────────────
+export async function updateOrder(id, updates) {
+  const item = data.orders.find((o) => String(o.id) === String(id));
+  if (item) Object.assign(item, updates);
+  await sbUpdate("orders", id, updates);
+}
+
+export async function updateMessage(id, updates) {
+  const item = data.messages.find((m) => String(m.id) === String(id));
+  if (item) Object.assign(item, updates);
+  await sbUpdate("messages", id, updates);
+}
+
+export async function updateAppointment(id, updates) {
+  const item = data.appointments.find((a) => String(a.id) === String(id));
+  if (item) Object.assign(item, updates);
+  await sbUpdate("appointments", id, updates);
+}
+
+export async function updateTrainingRequest(id, updates) {
+  const item = data.trainingRequests.find((t) => String(t.id) === String(id));
+  if (item) Object.assign(item, updates);
+  await sbUpdate("training_requests", id, updates);
+}
+
+// ── API admin : supprimer ────────────────────────────────────
+export async function deleteOrder(id) {
+  data.orders = data.orders.filter((o) => String(o.id) !== String(id));
+  await sbDelete("orders", id);
+}
+
+export async function deleteMessage(id) {
+  data.messages = data.messages.filter((m) => String(m.id) !== String(id));
+  await sbDelete("messages", id);
+}
+
+export async function deleteAppointment(id) {
+  data.appointments = data.appointments.filter((a) => String(a.id) !== String(id));
+  await sbDelete("appointments", id);
+}
+
+export async function deleteTrainingRequest(id) {
+  data.trainingRequests = data.trainingRequests.filter((t) => String(t.id) !== String(id));
+  await sbDelete("training_requests", id);
+}
+
+// ── Auth admin ───────────────────────────────────────────────
 export function getAdminPassword() {
   return localStorage.getItem(PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
 }

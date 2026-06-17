@@ -54,11 +54,12 @@ export function publicShell(content, active = "") {
         </button>
         <button class="nav-brand" data-link="/">${logo()}</button>
         <label class="language-select" title="Langue">
-          <span class="flag-${currentLanguage()}"></span>
+          ${currentLanguage() === "zh" ? "<span style=\"font-size:1.1rem;line-height:1\">🇨🇳</span>" : `<span class="flag-${currentLanguage()}"></span>`}
           <select data-lang>
             <option value="fr" ${currentLanguage() === "fr" ? "selected" : ""}>Francais</option>
             <option value="en" ${currentLanguage() === "en" ? "selected" : ""}>English</option>
             <option value="pt" ${currentLanguage() === "pt" ? "selected" : ""}>Portugues</option>
+            <option value="zh" ${currentLanguage() === "zh" ? "selected" : ""}>中文</option>
 </select>
         </label>
         <button class="primary header-cta" data-link="/machines">${t("action.order")}</button>

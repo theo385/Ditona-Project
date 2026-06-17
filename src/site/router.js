@@ -14,11 +14,13 @@ import {
   deleteRequest,
   logout,
   saveRequest,
+  refreshAdminData,
 } from "./adminPages.js";
 import { messageThread, requestThread } from "./components.js";
-import { data, saveData, today } from "./store.js";
+import { data, saveData, today, loadRemoteData } from "./store.js";
 import { setLanguage } from "./i18n.js";
 import { escapeHtml } from "./format.js";
+import { addMessage } from "./store.js";
 import {
   aboutPage,
   appointmentPage,
@@ -101,8 +103,7 @@ function bindChatbot() {
     event.preventDefault();
     const text = new FormData(event.target).get("text").trim();
     const autoReply = chatbotAnswer(text);
-    data.messages.unshift({ id: Date.now(), name: "Visiteur chatbot", email: "", phone: "", subject: "Chatbot", message: text, autoReply, reply: "", status: "Nouveau", seenAt: "", createdAt: today() });
-    saveData();
+    addMessage({ id: "MSG-" + Date.now().toString().slice(-6), name: "Visiteur chatbot", email: "", phone: "", subject: "Chatbot", message: text, autoReply, reply: "", status: "Nouveau", seenAt: "", createdAt: today() });
     document.querySelector("[data-chat-log]").insertAdjacentHTML("beforeend", `<p class="user">${text}</p><p class="bot">${autoReply}</p>`);
     event.target.reset();
   });
@@ -158,24 +159,32 @@ export function render() {
   if (path === "/rendez-vous") return appointmentPage(), bindGlobal();
   if (path === "/contact") return contactPage(), bindGlobal();
   if (path === "/login") return loginPage(), bindGlobal();
-  if (path === "/admin/home") return adminHome();
-  if (path === "/admin/sections") return adminSections();
-  if (path === "/admin/machines") return adminMachines();
-  if (path === "/admin/realisations") return adminRealisations();
-  if (path === "/admin/services") return adminServices();
-  if (path === "/admin/formations") return adminFormations();
-  if (path === "/admin/appointments") return adminAppointments();
-  if (path === "/admin/orders") return adminOrders();
-  if (path === "/admin/messages") return adminMessages();
-  if (path === "/admin/settings") return adminSettings();
-  if (path.startsWith("/admin")) return adminDashboard();
+  if (path.startsWith("/admin")) {
+    // Rafraîchir les données Supabase à chaque navigation admin
+    refreshAdminData().then(() => {
+      if (path === "/admin/home") return adminHome();
+      if (path === "/admin/sections") return adminSections();
+      if (path === "/admin/machines") return adminMachines();
+      if (path === "/admin/realisations") return adminRealisations();
+      if (path === "/admin/services") return adminServices();
+      if (path === "/admin/formations") return adminFormations();
+      if (path === "/admin/appointments") return adminAppointments();
+      if (path === "/admin/orders") return adminOrders();
+      if (path === "/admin/messages") return adminMessages();
+      if (path === "/admin/settings") return adminSettings();
+      adminDashboard();
+    });
+    return;
+  }
   homePage();
   bindGlobal();
 }
 
-export function startApp() {
+export async function startApp() {
   window.ditonaGo = go;
   window.ditonaBindGlobal = bindGlobal;
   window.addEventListener("popstate", render);
+  // Charger les données Supabase avant le premier rendu
+  await loadRemoteData();
   render();
 }

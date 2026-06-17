@@ -1,4 +1,4 @@
-import { data, saveData, today } from "./store.js";
+import { data, saveData, today, addOrder, addMessage, addAppointment, addTrainingRequest } from "./store.js";
 import { machineCard, mediaTag, orderForm, publicShell, realisationCard, serviceCard, setSlideTimer, visualTitle } from "./components.js";
 import { t, tr } from "./i18n.js";
 
@@ -112,12 +112,11 @@ export function formationPage() {
       </form>
     </section>
   `, "/formation");
-  document.querySelector("#formation-form").addEventListener("submit", (event) => {
+  document.querySelector("#formation-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const fd = Object.fromEntries(new FormData(event.target));
-    data.trainingRequests.unshift({ id: "FOR-" + Date.now().toString().slice(-6), ...fd, subject: `Formation: ${fd.training}`, status: "Nouveau", reply: "", seenAt: "", createdAt: today() });
-    saveData();
-    event.target.innerHTML = `<div class="success"><h2>Demande de formation envoyee</h2><p>L'administration peut maintenant vous recontacter.</p><button class="primary" data-link="/">Retour accueil</button></div>`;
+    await addTrainingRequest({ id: "FOR-" + Date.now().toString().slice(-6), ...fd, subject: `Formation: ${fd.training}`, status: "Nouveau", reply: "", seenAt: "", createdAt: today() });
+    event.target.innerHTML = `<div class="success"><h2>Demande de formation envoyee</h2><button class="primary" data-link="/">Retour accueil</button></div>`;
     window.ditonaBindGlobal();
   });
 }
@@ -178,11 +177,10 @@ export function appointmentPage() {
       </form>
     </section>
   `, "/rendez-vous");
-  document.querySelector("#appointment-form").addEventListener("submit", (event) => {
+  document.querySelector("#appointment-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    data.appointments.unshift({ id: Date.now(), ...Object.fromEntries(new FormData(event.target)), status: "Nouveau", reply: "", seenAt: "", createdAt: today() });
-    saveData();
-    event.target.innerHTML = `<div class="success"><h2>Rendez-vous envoye</h2><p>La demande est enregistree.</p><button class="primary" data-link="/">Retour accueil</button></div>`;
+    await addAppointment({ id: "RDV-" + Date.now().toString().slice(-6), ...Object.fromEntries(new FormData(event.target)), status: "Nouveau", reply: "", seenAt: "", createdAt: today() });
+    event.target.innerHTML = `<div class="success"><h2>Rendez-vous envoye</h2><button class="primary" data-link="/">Retour accueil</button></div>`;
     window.ditonaBindGlobal();
   });
 }
@@ -207,11 +205,10 @@ export function contactPage(subject = "") {
 </aside>
     </section>
   `, "/contact");
-  document.querySelector("#contact-form").addEventListener("submit", (event) => {
+  document.querySelector("#contact-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    data.messages.unshift({ id: Date.now(), ...Object.fromEntries(new FormData(event.target)), reply: "", status: "Nouveau", seenAt: "", createdAt: today() });
-    saveData();
-    event.target.innerHTML = `<div class="success"><h2>Message envoye</h2><p>Votre demande est enregistree.</p><button class="primary" data-link="/">Retour accueil</button></div>`;
+    await addMessage({ id: "MSG-" + Date.now().toString().slice(-6), ...Object.fromEntries(new FormData(event.target)), reply: "", status: "Nouveau", seenAt: "", createdAt: today() });
+    event.target.innerHTML = `<div class="success"><h2>Message envoye</h2><button class="primary" data-link="/">Retour accueil</button></div>`;
     window.ditonaBindGlobal();
   });
 }
@@ -226,13 +223,12 @@ export function orderMachine(id) {
   document.querySelector("[data-modal]").addEventListener("click", (event) => {
     if (event.target.matches("[data-modal]")) closeModal();
   });
-  document.querySelector("#order-form").addEventListener("submit", (event) => {
+  document.querySelector("#order-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const fd = Object.fromEntries(new FormData(event.target));
     const client = `${fd.name} ${fd.firstname}`.trim();
-    data.orders.unshift({ id: "CMD-" + Date.now().toString().slice(-6), machineId: machine.id, machine: machine.name, price: machine.price, client, name: fd.name, firstname: fd.firstname, email: fd.email || "", phone: fd.phone, note: fd.message || "Demande creee depuis le site.", status: "Nouvelle", reply: "", seenAt: "", createdAt: today() });
-    saveData();
-    document.querySelector("#order-form").innerHTML = `<div class="success"><h2>Commande envoyee</h2><p>L'administration a recu votre demande et peut vous contacter.</p><button type="button" class="primary" data-close-modal>Fermer</button></div>`;
+    await addOrder({ id: "CMD-" + Date.now().toString().slice(-6), machineId: machine.id, machine: machine.name, price: machine.price, client, name: fd.name, firstname: fd.firstname, email: fd.email || "", phone: fd.phone, note: fd.message || "Demande creee depuis le site.", status: "Nouvelle", reply: "", seenAt: "", createdAt: today() });
+    document.querySelector("#order-form").innerHTML = `<div class="success"><h2>Commande envoyee</h2><button type="button" class="primary" data-close-modal>Fermer</button></div>`;
     document.querySelector("[data-close-modal]").addEventListener("click", closeModal);
   });
 }

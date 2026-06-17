@@ -1,6 +1,6 @@
 import { adminItem, clearTimers, dashboardActivity, logo, messageConversation, requestConversation } from "./components.js";
 import { countNew } from "./format.js";
-import { data, getAdminPassword, isAdminLoggedIn, loginAdmin, logoutAdmin, saveData, setAdminPassword, today } from "./store.js";
+import { data, getAdminPassword, isAdminLoggedIn, loginAdmin, logoutAdmin, saveData, setAdminPassword, today, updateOrder, updateMessage, updateAppointment, updateTrainingRequest, deleteOrder, deleteMessage, deleteAppointment, deleteTrainingRequest, loadRemoteData } from "./store.js";
 
 export function requireAdmin() {
   if (!isAdminLoggedIn()) {
@@ -82,6 +82,10 @@ export function adminShell(content, active = "dashboard") {
 
 function adminNav(label, path, active, key, count = 0) {
   return `<button class="${active === key ? "active" : ""}" data-link="${path}"><span>${label}</span>${count ? `<b class="nav-badge" title="${count} nouvelle demande">${count}</b>` : ""}</button>`;
+}
+
+export async function refreshAdminData() {
+  await loadRemoteData();
 }
 
 export function adminDashboard() {
@@ -436,26 +440,35 @@ export function fillForm(formId, item) {
   form.scrollIntoView({ behavior: "smooth" });
 }
 
-export function saveRequest(type, id) {
+export async function saveRequest(type, id) {
   const key = type === "order" ? "orders" : type === "appointment" ? "appointments" : type === "formation" ? "trainingRequests" : "messages";
   const reply = document.querySelector(`[data-${type}-reply="${CSS.escape(String(id))}"]`)?.value || "";
-  data[key] = data[key].map((item) => String(item.id) === String(id) ? {
-    ...item,
-    seenAt: item.seenAt || today(),
-    status: reply ? "Repondu" : item.status || "Vu",
+  const updates = {
+    seen_at: today(),
+    status: reply ? "Repondu" : "Vu",
     reply,
-  } : item);
-  saveData();
+  };
+  // Mise à jour locale
+  data[key] = data[key].map((item) => String(item.id) === String(id) ? { ...item, seenAt: updates.seen_at, status: updates.status, reply } : item);
+  // Synchronisation Supabase
+  if (type === "order") await updateOrder(id, updates);
+  else if (type === "appointment") await updateAppointment(id, updates);
+  else if (type === "formation") await updateTrainingRequest(id, updates);
+  else await updateMessage(id, updates);
   if (type === "order") adminOrders();
   if (type === "appointment") adminAppointments();
   if (type === "formation") adminFormations();
   if (type === "message") adminMessages();
 }
 
-export function deleteRequest(type, id) {
+export async function deleteRequest(type, id) {
   const key = type === "order" ? "orders" : type === "appointment" ? "appointments" : type === "formation" ? "trainingRequests" : "messages";
   data[key] = (data[key] || []).filter((item) => String(item.id) !== String(id));
-  saveData();
+  // Suppression Supabase
+  if (type === "order") await deleteOrder(id);
+  else if (type === "appointment") await deleteAppointment(id);
+  else if (type === "formation") await deleteTrainingRequest(id);
+  else await deleteMessage(id);
   if (type === "order") adminOrders();
   if (type === "appointment") adminAppointments();
   if (type === "formation") adminFormations();

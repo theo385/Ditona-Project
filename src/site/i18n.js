@@ -259,6 +259,20 @@ const textTranslations = {
     "Contact direct": "Direct contact",
     "Concevoir, fournir, installer et maintenir des machines industrielles adaptees au terrain.": "Design, supply, install and maintain industrial machines adapted to real field conditions.",
     "Analyse du besoin, proposition technique, fabrication ou sourcing, installation, formation et suivi apres-vente.": "Needs analysis, technical proposal, manufacturing or sourcing, installation, training and after-sales follow-up.",
+    "Ingenieur DITONA": "DITONA Engineering",
+    "DITONA  ENGINEERING developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.": "DITONA Engineering develops technical solutions to produce, maintain and improve industrial equipment.",
+    "Rencontrer l'ingenieur DITONA": "Meet DITONA Engineering",
+    "Planifiez un echange pour un achat, un projet, une maintenance ou une formation.": "Schedule a discussion for a purchase, project, maintenance or training.",
+    "Ligne de remplissage automatique": "Automatic filling line",
+    "Ligne de convoyage, dosage et remplissage pour production agro-industrielle.": "Conveying, dosing and filling line for agro-industrial production.",
+    "Conception 3D, fabrication, installation et mise en service.": "3D design, manufacturing, installation and commissioning.",
+    "Groupe hydraulique chantier": "Site hydraulic unit",
+    "Diagnostic, entretien et remise en service d'equipements hydrauliques.": "Diagnosis, servicing and recommissioning of hydraulic equipment.",
+    "Intervention terrain avec controle securite.": "Field intervention with safety checks.",
+    "Prototype laboratoire automatise": "Automated laboratory prototype",
+    "Machine speciale avec capteurs, controle et instrumentation.": "Special machine with sensors, control and instrumentation.",
+    "Projet realise selon cahier des charges.": "Project carried out according to specifications.",
+    "Machine CNC compacte pour gravure, decoupe et prototypage industriel.": "Compact CNC machine for engraving, cutting and industrial prototyping.",
   },
   pt: {
     "Fabrication de machines industrielles": "Fabricacao de maquinas industriais",
@@ -370,7 +384,21 @@ const textTranslations = {
     "Notre methode": "O nosso metodo",
     "Contact direct": "Contacto direto",
     "Concevoir, fournir, installer et maintenir des machines industrielles adaptees au terrain.": "Conceber, fornecer, instalar e manter maquinas industriais adaptadas ao terreno.",
-    "Analyse du besoin, proposition technique, fabrication ou sourcing, installation, formation et suivi apres-vente.": "Analise da necessidade, proposta tecnica, fabricacao ou sourcing, instalacao, formacao e acompanhamento pos-venda.",
+    "Analyse du besoin, proposition technique, fabrication ou sourcing, installation, formation et suivi apres-venda.": "Analise da necessidade, proposta tecnica, fabricacao ou sourcing, instalacao, formacao e acompanhamento pos-venda.",
+    "Ingenieur DITONA": "DITONA Engineering",
+    "DITONA  ENGINEERING developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.": "A DITONA Engineering desenvolve solucoes tecnicas para produzir, manter e melhorar equipamentos industriais.",
+    "Rencontrer l'ingenieur DITONA": "Encontrar a DITONA Engineering",
+    "Planifiez un echange pour un achat, un projet, une maintenance ou une formation.": "Agende uma conversa para compra, projeto, manutencao ou formacao.",
+    "Ligne de remplissage automatique": "Linha de enchimento automatica",
+    "Ligne de convoyage, dosage et remplissage pour production agro-industrielle.": "Linha de transporte, dosagem e enchimento para producao agro-industrial.",
+    "Conception 3D, fabrication, installation et mise en service.": "Concepcao 3D, fabricacao, instalacao e colocacao em servico.",
+    "Groupe hydraulique chantier": "Grupo hidraulico de obra",
+    "Diagnostic, entretien et remise en service d'equipements hydrauliques.": "Diagnostico, manutencao e recolocacao em servico de equipamentos hidraulicos.",
+    "Intervention terrain avec controle securite.": "Intervencao no terreno com controlo de seguranca.",
+    "Prototype laboratoire automatise": "Prototipo de laboratorio automatizado",
+    "Machine speciale avec capteurs, controle et instrumentation.": "Maquina especial com sensores, controlo e instrumentacao.",
+    "Projet realise selon cahier des charges.": "Projeto realizado segundo o caderno de encargos.",
+    "Machine CNC compacte pour gravure, decoupe et prototypage industriel.": "Maquina CNC compacta para gravacao, corte e prototipagem industrial.",
   },
   zh: {
     "Fabrication de machines industrielles": "工业机器制造",
@@ -458,7 +486,8 @@ export function currentLanguage() {
 }
 
 export function setLanguage(lang) {
-  localStorage.setItem(LANG_KEY, dictionaries[lang] ? lang : "fr");
+  const supported = ["fr", "en", "pt", "zh"];
+  localStorage.setItem(LANG_KEY, supported.includes(lang) ? lang : "fr");
 }
 
 export function t(key) {
@@ -474,10 +503,15 @@ export function tr(text) {
 
 export function translateDom(root = document) {
   const lang = currentLanguage();
-  if (lang === "fr") return;
+
+  // --- Placeholders: stocker le texte FR original pour pouvoir re-traduire ---
   root.querySelectorAll("input[placeholder], textarea[placeholder]").forEach((field) => {
-    field.placeholder = tr(field.placeholder);
+    const orig = field.dataset.origPlaceholder || field.placeholder;
+    if (!field.dataset.origPlaceholder) field.dataset.origPlaceholder = orig;
+    field.placeholder = lang === "fr" ? orig : (textTranslations[lang]?.[orig] || orig);
   });
+
+  // --- Noeuds texte ---
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
@@ -488,9 +522,18 @@ export function translateDom(root = document) {
   const nodes = [];
   while (walker.nextNode()) nodes.push(walker.currentNode);
   nodes.forEach((node) => {
-    const original = node.nodeValue;
-    const trimmed = original.trim();
-    const translated = tr(trimmed);
-    if (translated !== trimmed) node.nodeValue = original.replace(trimmed, translated);
+    const current = node.nodeValue;
+    const trimmed = current.trim();
+    const parent = node.parentElement;
+    if (!parent) return;
+    // Mémoriser le texte français original sur le premier passage
+    if (!parent.dataset.origText) parent.dataset.origText = trimmed;
+    const frSource = parent.dataset.origText;
+    if (lang === "fr") {
+      if (frSource && frSource !== trimmed) node.nodeValue = current.replace(trimmed, frSource);
+    } else {
+      const translated = textTranslations[lang]?.[frSource] || frSource;
+      if (translated !== trimmed) node.nodeValue = current.replace(trimmed, translated);
+    }
   });
 }
