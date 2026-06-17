@@ -48,7 +48,14 @@ function markSeen(key) {
     changed = true;
     return { ...item, seenAt: today() };
   });
-  if (changed) saveData();
+  if (!changed) return;
+  const updates = { seen_at: today() };
+  data[key].forEach((item) => {
+    if (key === "orders") updateOrder(item.id, updates);
+    if (key === "appointments") updateAppointment(item.id, updates);
+    if (key === "messages") updateMessage(item.id, updates);
+    if (key === "trainingRequests") updateTrainingRequest(item.id, updates);
+  });
 }
 
 export function adminShell(content, active = "dashboard") {

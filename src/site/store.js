@@ -17,6 +17,10 @@ const headers = {
   "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
   "Prefer": "return=representation",
 };
+const upsertHeaders = {
+  ...headers,
+  "Prefer": "resolution=merge-duplicates,return=representation",
+};
 
 // ── Clés localStorage (uniquement pour contenu admin: machines, médias) ──
 export const STORAGE_KEY = "ditona_site_data_v3";
@@ -43,6 +47,21 @@ async function sbSelect(table, order = "created_at") {
   }
 }
 
+async function sbSelectContent() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/site_content?key=eq.main&select=value`,
+      { headers }
+    );
+    if (!res.ok) throw new Error(await res.text());
+    const rows = await res.json();
+    return rows[0]?.value || null;
+  } catch (err) {
+    console.warn("[Supabase] site_content indisponible, fallback localStorage:", err);
+    return null;
+  }
+}
+
 async function sbInsert(table, row) {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
@@ -55,6 +74,21 @@ async function sbInsert(table, row) {
   } catch (err) {
     console.error(`[Supabase] INSERT ${table}:`, err);
     return null;
+  }
+}
+
+async function sbUpsertContent(value) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/site_content?on_conflict=key`, {
+      method: "POST",
+      headers: upsertHeaders,
+      body: JSON.stringify({ key: "main", value, updated_at: new Date().toISOString() }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return true;
+  } catch (err) {
+    console.warn("[Supabase] UPSERT site_content:", err);
+    return false;
   }
 }
 
@@ -160,85 +194,140 @@ function normalizeData(next) {
   };
 }
 
+function appRequestFromSupabase(row = {}) {
+  return {
+    ...row,
+    machineId: row.machine_id ?? row.machineId,
+    autoReply: row.auto_reply ?? row.autoReply ?? "",
+    seenAt: row.seen_at ?? row.seenAt ?? "",
+    createdAt: row.created_at ?? row.createdAt ?? "",
+  };
+}
+
+function requestToSupabase(row = {}) {
+  const next = { ...row };
+  if ("machineId" in next) {
+    next.machine_id = next.machineId;
+    delete next.machineId;
+  }
+  if ("autoReply" in next) {
+    next.auto_reply = next.autoReply;
+    delete next.autoReply;
+  }
+  if ("seenAt" in next) {
+    next.seen_at = next.seenAt;
+    delete next.seenAt;
+  }
+  if ("createdAt" in next) {
+    next.created_at = next.createdAt;
+    delete next.createdAt;
+  }
+  return next;
+}
+
+function localContentSnapshot() {
+  return normalizeData({
+    ...clone(defaults),
+    homeMedia: data.homeMedia,
+    homeProof: data.homeProof,
+    sectionMedia: data.sectionMedia,
+    machines: data.machines,
+    realisations: data.realisations,
+    services: data.services,
+    messages: [],
+    orders: [],
+    appointments: [],
+    trainingRequests: [],
+  });
+}
+
 // ── Objet data principal ─────────────────────────────────────
 export let data = loadLocalData();
 
 // ── Charger les données Supabase au démarrage ────────────────
 export async function loadRemoteData() {
-  const [orders, messages, appointments, trainingRequests] = await Promise.all([
+  const [orders, messages, appointments, trainingRequests, remoteContent] = await Promise.all([
     sbSelect("orders"),
     sbSelect("messages"),
     sbSelect("appointments"),
     sbSelect("training_requests"),
+    sbSelectContent(),
   ]);
-  data.orders = orders;
-  data.messages = messages;
-  data.appointments = appointments;
-  data.trainingRequests = trainingRequests;
+  if (remoteContent) {
+    const synced = normalizeData({
+      ...clone(defaults),
+      ...remoteContent,
+      messages: [],
+      orders: [],
+      appointments: [],
+      trainingRequests: [],
+    });
+    Object.assign(data, synced);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
+  }
+  data.orders = orders.map(appRequestFromSupabase);
+  data.messages = messages.map(appRequestFromSupabase);
+  data.appointments = appointments.map(appRequestFromSupabase);
+  data.trainingRequests = trainingRequests.map(appRequestFromSupabase);
 }
 
 // ── saveData : garde machines/médias en local uniquement ─────
 export function saveData() {
-  const localOnly = {
-    ...data,
-    messages: [],
-    orders: [],
-    appointments: [],
-    trainingRequests: [],
-  };
+  const localOnly = localContentSnapshot();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(localOnly));
+  sbUpsertContent(localOnly);
 }
 
 // ── API publique : ajouter une commande ──────────────────────
 export async function addOrder(order) {
   const row = { ...order };
   data.orders.unshift(row);
-  await sbInsert("orders", row);
+  await sbInsert("orders", requestToSupabase(row));
 }
 
 // ── API publique : ajouter un message ───────────────────────
 export async function addMessage(message) {
   const row = { ...message };
   data.messages.unshift(row);
-  await sbInsert("messages", row);
+  await sbInsert("messages", requestToSupabase(row));
 }
 
 // ── API publique : ajouter un rendez-vous ───────────────────
 export async function addAppointment(appointment) {
   const row = { ...appointment };
   data.appointments.unshift(row);
-  await sbInsert("appointments", row);
+  await sbInsert("appointments", requestToSupabase(row));
 }
 
 // ── API publique : ajouter une demande de formation ─────────
 export async function addTrainingRequest(request) {
   const row = { ...request };
   data.trainingRequests.unshift(row);
-  await sbInsert("training_requests", row);
+  await sbInsert("training_requests", requestToSupabase(row));
 }
 
 // ── API admin : mettre à jour statut/réponse ─────────────────
 export async function updateOrder(id, updates) {
   const item = data.orders.find((o) => String(o.id) === String(id));
-  if (item) Object.assign(item, updates);
+  if (item) Object.assign(item, appRequestFromSupabase(updates));
   await sbUpdate("orders", id, updates);
 }
 
 export async function updateMessage(id, updates) {
   const item = data.messages.find((m) => String(m.id) === String(id));
-  if (item) Object.assign(item, updates);
+  if (item) Object.assign(item, appRequestFromSupabase(updates));
   await sbUpdate("messages", id, updates);
 }
 
 export async function updateAppointment(id, updates) {
   const item = data.appointments.find((a) => String(a.id) === String(id));
-  if (item) Object.assign(item, updates);
+  if (item) Object.assign(item, appRequestFromSupabase(updates));
   await sbUpdate("appointments", id, updates);
 }
 
 export async function updateTrainingRequest(id, updates) {
   const item = data.trainingRequests.find((t) => String(t.id) === String(id));
-  if (item) Object.assign(item, updates);
+  if (item) Object.assign(item, appRequestFromSupabase(updates));
   await sbUpdate("training_requests", id, updates);
 }
 

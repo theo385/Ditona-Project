@@ -852,11 +852,12 @@ label {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   min-height: 100vh;
-  background: var(--surface);
+  background: linear-gradient(90deg, var(--ink) 0 240px, var(--surface) 240px);
 }
 
 .admin-app.admin-collapsed {
   grid-template-columns: 76px minmax(0, 1fr);
+  background: linear-gradient(90deg, var(--ink) 0 76px, var(--surface) 76px);
 }
 
 .admin-side {
@@ -1727,6 +1728,7 @@ label {
 
   /* ===== ADMIN ===== */
   .admin-app, .admin-app.admin-collapsed { grid-template-columns: 1fr; }
+  .admin-app, .admin-app.admin-collapsed { background: var(--surface); }
   .admin-side { position: relative; height: auto; }
   .admin-main { padding: 16px 12px; }
   .activity-row { grid-template-columns: 1fr; }
