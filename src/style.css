@@ -851,8 +851,15 @@ label {
 .admin-app {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: linear-gradient(90deg, var(--ink) 0 240px, var(--surface) 240px);
+}
+
+html.admin-mode,
+body.admin-mode {
+  height: 100%;
+  overflow: hidden;
 }
 
 .admin-app.admin-collapsed {
@@ -868,6 +875,7 @@ label {
   width: 240px;
   height: 100vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 18px;
   color: white;
   background: linear-gradient(180deg, var(--ink), #10243a);
@@ -957,6 +965,9 @@ label {
 
 .admin-main {
   grid-column: 2;
+  height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: clamp(18px, 4vw, 36px);
 }
 
@@ -1327,6 +1338,11 @@ label {
 }
 
 .google-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
   min-height: 44px;
   padding: 10px 16px;
   border: 1px solid var(--line);
@@ -1334,6 +1350,19 @@ label {
   color: var(--ink);
   background: white;
   font-weight: 850;
+}
+
+.google-button::before {
+  content: "G";
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: white;
+  font-size: .85rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #4285f4, #ea4335 48%, #fbbc05 72%, #34a853);
 }
 
 .google-button:hover {
@@ -1788,7 +1817,7 @@ label {
   .section-head { flex-direction: column; align-items: stretch; }
 
   /* ===== ADMIN ===== */
-  .admin-app, .admin-app.admin-collapsed { grid-template-columns: 1fr; }
+  .admin-app, .admin-app.admin-collapsed { grid-template-columns: 1fr; height: 100vh; }
   .admin-app, .admin-app.admin-collapsed { background: var(--surface); }
   .admin-side {
     position: fixed;
@@ -1799,7 +1828,8 @@ label {
   .admin-collapsed .admin-side { width: 76px; }
   .admin-main {
     grid-column: 1;
-    min-height: 100vh;
+    height: 100vh;
+    overflow-y: auto;
     margin-left: 76px;
     padding: 16px 12px;
   }

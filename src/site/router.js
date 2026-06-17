@@ -18,7 +18,7 @@ import {
   refreshAdminData,
 } from "./adminPages.js";
 import { messageThread, requestThread } from "./components.js";
-import { data, saveData, today, loadRemoteData } from "./store.js";
+import { data, saveData, today, loadRemoteData, refreshSiteContent } from "./store.js";
 import { setLanguage } from "./i18n.js";
 import { escapeHtml } from "./format.js";
 import { addMessage } from "./store.js";
@@ -112,13 +112,13 @@ function bindChatbot() {
 
 function bindAdminActions() {
   document.querySelectorAll("[data-edit-home]").forEach((el) => el.addEventListener("click", () => fillForm("#home-form", data.homeMedia.find((s) => s.id === Number(el.dataset.editHome)))));
-  document.querySelectorAll("[data-delete-home]").forEach((el) => el.addEventListener("click", () => { data.homeMedia = data.homeMedia.filter((s) => s.id !== Number(el.dataset.deleteHome)); saveData(); adminHome(); }));
+  document.querySelectorAll("[data-delete-home]").forEach((el) => el.addEventListener("click", async () => { data.homeMedia = data.homeMedia.filter((s) => s.id !== Number(el.dataset.deleteHome)); await saveData(); adminHome(); }));
   document.querySelectorAll("[data-edit-home-proof]").forEach((el) => el.addEventListener("click", () => fillForm("#home-proof-form", (data.homeProof || []).find((s) => s.id === Number(el.dataset.editHomeProof)))));
-  document.querySelectorAll("[data-delete-home-proof]").forEach((el) => el.addEventListener("click", () => { data.homeProof = (data.homeProof || []).filter((s) => s.id !== Number(el.dataset.deleteHomeProof)); saveData(); adminHome(); }));
+  document.querySelectorAll("[data-delete-home-proof]").forEach((el) => el.addEventListener("click", async () => { data.homeProof = (data.homeProof || []).filter((s) => s.id !== Number(el.dataset.deleteHomeProof)); await saveData(); adminHome(); }));
   document.querySelectorAll("[data-edit-machine]").forEach((el) => el.addEventListener("click", () => fillForm("#machine-form", data.machines.find((m) => m.id === Number(el.dataset.editMachine)))));
-  document.querySelectorAll("[data-delete-machine]").forEach((el) => el.addEventListener("click", () => { data.machines = data.machines.filter((m) => m.id !== Number(el.dataset.deleteMachine)); saveData(); adminMachines(); }));
+  document.querySelectorAll("[data-delete-machine]").forEach((el) => el.addEventListener("click", async () => { data.machines = data.machines.filter((m) => m.id !== Number(el.dataset.deleteMachine)); await saveData(); adminMachines(); }));
   document.querySelectorAll("[data-edit-realisation]").forEach((el) => el.addEventListener("click", () => fillForm("#realisation-form", data.realisations.find((r) => r.id === Number(el.dataset.editRealisation)))));
-  document.querySelectorAll("[data-delete-realisation]").forEach((el) => el.addEventListener("click", () => { data.realisations = data.realisations.filter((r) => r.id !== Number(el.dataset.deleteRealisation)); saveData(); adminRealisations(); }));
+  document.querySelectorAll("[data-delete-realisation]").forEach((el) => el.addEventListener("click", async () => { data.realisations = data.realisations.filter((r) => r.id !== Number(el.dataset.deleteRealisation)); await saveData(); adminRealisations(); }));
   document.querySelectorAll("[data-edit-section]").forEach((el) => el.addEventListener("click", () => {
     const form = document.querySelector("#section-media-form");
     if (!form) return;
@@ -128,7 +128,7 @@ function bindAdminActions() {
   }));
   document.querySelectorAll("[data-delete-section]").forEach((el) => el.addEventListener("click", () => alert("Ce media pilote une section publique. Modifiez-le au lieu de le supprimer.")));
   document.querySelectorAll("[data-edit-service]").forEach((el) => el.addEventListener("click", () => fillForm("#service-form", data.services.find((s) => s.id === Number(el.dataset.editService)))));
-  document.querySelectorAll("[data-delete-service]").forEach((el) => el.addEventListener("click", () => { data.services = data.services.filter((s) => s.id !== Number(el.dataset.deleteService)); saveData(); adminServices(); }));
+  document.querySelectorAll("[data-delete-service]").forEach((el) => el.addEventListener("click", async () => { data.services = data.services.filter((s) => s.id !== Number(el.dataset.deleteService)); await saveData(); adminServices(); }));
   document.querySelectorAll("[data-save-order]").forEach((el) => el.addEventListener("click", () => saveRequest("order", el.dataset.saveOrder)));
   document.querySelectorAll("[data-save-appointment]").forEach((el) => el.addEventListener("click", () => saveRequest("appointment", el.dataset.saveAppointment)));
   document.querySelectorAll("[data-save-message]").forEach((el) => el.addEventListener("click", () => saveRequest("message", el.dataset.saveMessage)));
@@ -150,11 +150,16 @@ function bindAdminActions() {
   }));
 }
 
+function setAdminMode(enabled) {
+  document.documentElement.classList.toggle("admin-mode", enabled);
+  document.body.classList.toggle("admin-mode", enabled);
+}
+
 export function render() {
   const path = location.pathname;
-  if (path === "/machines") return machinesPage(), bindGlobal();
-  if (path === "/realisations") return realisationsPage(), bindGlobal();
-  if (path === "/services") return servicesPage(), bindGlobal();
+  if (path === "/machines") return refreshSiteContent().then(() => { machinesPage(); bindGlobal(); });
+  if (path === "/realisations") return refreshSiteContent().then(() => { realisationsPage(); bindGlobal(); });
+  if (path === "/services") return refreshSiteContent().then(() => { servicesPage(); bindGlobal(); });
   if (path === "/formation") return formationPage(), bindGlobal();
   if (path === "/about") return aboutPage(), bindGlobal();
   if (path === "/rendez-vous") return appointmentPage(), bindGlobal();
@@ -164,6 +169,7 @@ export function render() {
     return;
   }
   if (path.startsWith("/admin")) {
+    setAdminMode(true);
     // Rafraîchir les données Supabase à chaque navigation admin
     refreshAdminData().then(() => {
       if (path === "/admin/home") return adminHome();
@@ -181,14 +187,22 @@ export function render() {
     });
     return;
   }
-  homePage();
-  bindGlobal();
+  setAdminMode(false);
+  refreshSiteContent().then(() => { homePage(); bindGlobal(); });
 }
 
 export async function startApp() {
   window.ditonaGo = go;
   window.ditonaBindGlobal = bindGlobal;
   window.addEventListener("popstate", render);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden || location.pathname.startsWith("/admin")) return;
+    refreshSiteContent().then(() => {
+      if (location.pathname === "/" || location.pathname === "/machines" || location.pathname === "/realisations" || location.pathname === "/services") {
+        render();
+      }
+    });
+  });
   // Charger les données Supabase avant le premier rendu
   await loadRemoteData();
   render();

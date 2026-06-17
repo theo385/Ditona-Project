@@ -149,7 +149,7 @@ export async function loginPage() {
         <div class="login-grid">
         <form id="customer-login-form" class="panel form-panel">
           <h2>Se connecter</h2>
-          <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
+          <label>Numero client ou e-mail<input name="email" type="email" required placeholder="client@email.com"></label>
           <label>Mot de passe<input name="password" type="password" required></label>
           <label class="check-line"><input type="checkbox" checked> Rester connecte</label>
           <button class="primary" type="submit">Se connecter</button>
@@ -190,17 +190,31 @@ function bindCustomerAuth() {
     await loginPage();
     window.ditonaBindGlobal?.();
   });
-  document.querySelectorAll("[data-google-login]").forEach((button) => button.addEventListener("click", () => loginWithGoogle(button.dataset.googleLogin)));
+  document.querySelectorAll("[data-google-login]").forEach((button) => button.addEventListener("click", async () => {
+    const message = button.closest("form")?.querySelector(".form-message") || document.querySelector("[data-login-message]");
+    try {
+      button.disabled = true;
+      await loginWithGoogle(button.dataset.googleLogin);
+    } catch (err) {
+      if (message) message.textContent = err.message;
+      button.disabled = false;
+    }
+  }));
   document.querySelector("#customer-login-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const message = document.querySelector("[data-login-message]");
+    const button = event.target.querySelector('button[type="submit"]');
     try {
+      button.disabled = true;
+      message.textContent = "";
       const fd = new FormData(event.target);
       await loginCustomer(fd.get("email"), fd.get("password"));
       await loginPage();
       window.ditonaBindGlobal?.();
     } catch (err) {
       message.textContent = err.message;
+    } finally {
+      button.disabled = false;
     }
   });
   document.querySelector("#buyer-signup-form")?.addEventListener("submit", (event) => signupFromForm(event, "acheteur", "[data-buyer-message]"));
@@ -210,13 +224,18 @@ function bindCustomerAuth() {
 async function signupFromForm(event, role, messageSelector) {
   event.preventDefault();
   const message = document.querySelector(messageSelector);
+  const button = event.target.querySelector('button[type="submit"]');
   try {
+    button.disabled = true;
+    message.textContent = "";
     const fd = new FormData(event.target);
     await signupCustomer(fd.get("email"), fd.get("password"), role);
     await loginPage();
     window.ditonaBindGlobal?.();
   } catch (err) {
     message.textContent = err.message;
+  } finally {
+    button.disabled = false;
   }
 }
 

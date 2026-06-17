@@ -94,28 +94,52 @@ async function sbUpsert(table, row, conflictKey = "id") {
   }
 }
 
+function stripDataUrls(value) {
+  if (typeof value === "string") return value.startsWith("data:") ? "" : value;
+  if (Array.isArray(value)) return value.map(stripDataUrls);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, stripDataUrls(item)]));
+  }
+  return value;
+}
+
+function pkceVerifier() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function pkceChallenge(verifier) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 export async function uploadMediaFile(file, folder = "admin") {
   if (!file) return "";
   const extension = file.name?.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
   const cleanFolder = String(folder).replace(/[^a-z0-9-]/gi, "-").toLowerCase();
   const path = `${cleanFolder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-  try {
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${path}`, {
-      method: "POST",
-      headers: {
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-        "Content-Type": file.type || "application/octet-stream",
-        "x-upsert": "true",
-      },
-      body: file,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
-  } catch (err) {
-    console.warn("[Supabase] upload media indisponible, fallback local:", err);
-    return "";
+  let lastError = "";
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${path}`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": file.type || "application/octet-stream",
+          "x-upsert": "true",
+        },
+        body: file,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
+    } catch (err) {
+      lastError = err?.message || String(err);
+      console.warn(`[Supabase] upload tentative ${attempt + 1}/3:`, err);
+      await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+    }
   }
+  throw new Error(lastError || "Upload impossible vers le cloud.");
 }
 
 async function sbUpsertContent(value) {
@@ -285,6 +309,21 @@ function localContentSnapshot() {
 // ── Objet data principal ─────────────────────────────────────
 export let data = loadLocalData();
 
+function applyRemoteContent(remoteContent) {
+  if (!remoteContent) return false;
+  const synced = normalizeData({
+    ...clone(defaults),
+    ...remoteContent,
+    messages: [],
+    orders: [],
+    appointments: [],
+    trainingRequests: [],
+  });
+  Object.assign(data, synced);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
+  return true;
+}
+
 // ── Charger les données Supabase au démarrage ────────────────
 export async function loadRemoteData() {
   const [orders, messages, appointments, trainingRequests, accounts, remoteContent] = await Promise.all([
@@ -295,18 +334,7 @@ export async function loadRemoteData() {
     sbSelect("customer_accounts", "last_login_at"),
     sbSelectContent(),
   ]);
-  if (remoteContent) {
-    const synced = normalizeData({
-      ...clone(defaults),
-      ...remoteContent,
-      messages: [],
-      orders: [],
-      appointments: [],
-      trainingRequests: [],
-    });
-    Object.assign(data, synced);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
-  }
+  applyRemoteContent(remoteContent);
   data.orders = orders.map(appRequestFromSupabase);
   data.messages = messages.map(appRequestFromSupabase);
   data.appointments = appointments.map(appRequestFromSupabase);
@@ -314,11 +342,19 @@ export async function loadRemoteData() {
   data.customerAccounts = accounts;
 }
 
-// ── saveData : garde machines/médias en local uniquement ─────
-export function saveData() {
+export async function refreshSiteContent() {
+  const remoteContent = await sbSelectContent();
+  return applyRemoteContent(remoteContent);
+}
+
+// ── saveData : synchronise le contenu admin vers Supabase ────
+export async function saveData() {
   const localOnly = localContentSnapshot();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(localOnly));
-  sbUpsertContent(localOnly);
+  const cloudPayload = stripDataUrls(localOnly);
+  const synced = await sbUpsertContent(cloudPayload);
+  if (!synced) throw new Error("Synchronisation cloud impossible. Verifiez votre connexion internet.");
+  return true;
 }
 
 // ── API publique : ajouter une commande ──────────────────────
@@ -349,17 +385,30 @@ export async function addTrainingRequest(request) {
   await sbInsert("training_requests", requestToSupabase(row));
 }
 
+async function authErrorMessage(res, fallback) {
+  try {
+    const payload = await res.json();
+    if (payload.error_code === "email_not_confirmed") {
+      return "Compte cree mais e-mail non confirme. Ouvrez le lien recu par e-mail.";
+    }
+    return payload.msg || payload.error_description || payload.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function loginCustomer(email, password) {
   const cleanEmail = String(email || "").trim().toLowerCase();
   const cleanPassword = String(password || "");
-  if (!cleanEmail || !cleanPassword) throw new Error("Email et mot de passe requis.");
+  if (!cleanEmail || !cleanPassword) throw new Error("E-mail et mot de passe requis.");
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers,
     body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
   });
-  if (!res.ok) throw new Error("Connexion impossible. Verifiez l'email et le mot de passe.");
+  if (!res.ok) throw new Error(await authErrorMessage(res, "Connexion impossible. Verifiez l'e-mail et le mot de passe."));
   const session = await res.json();
+  if (!session.access_token) throw new Error("Connexion incomplete. Verifiez votre e-mail.");
   await rememberCustomer(session.user, "email");
   sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
   return session;
@@ -368,29 +417,33 @@ export async function loginCustomer(email, password) {
 export async function signupCustomer(email, password, role = "acheteur") {
   const cleanEmail = String(email || "").trim().toLowerCase();
   const cleanPassword = String(password || "");
-  if (!cleanEmail || !cleanPassword) throw new Error("Email et mot de passe requis.");
+  if (!cleanEmail || !cleanPassword) throw new Error("E-mail et mot de passe requis.");
+  if (cleanPassword.length < 6) throw new Error("Le mot de passe doit contenir au moins 6 caracteres.");
   const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
     method: "POST",
     headers,
     body: JSON.stringify({ email: cleanEmail, password: cleanPassword, data: { role } }),
   });
-  if (!res.ok) throw new Error("Inscription impossible. Essayez un autre email ou mot de passe.");
+  if (!res.ok) throw new Error(await authErrorMessage(res, "Inscription impossible. Essayez un autre e-mail."));
   const session = await res.json();
+  if (!session.access_token) {
+    throw new Error("Compte cree. Verifiez votre e-mail pour activer la connexion.");
+  }
   await rememberCustomer(session.user || { id: cleanEmail, email: cleanEmail }, role);
   sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
   return session;
 }
 
-export function loginWithGoogle(role = "acheteur") {
+export async function loginWithGoogle(role = "acheteur") {
   localStorage.setItem("ditona_customer_role", role);
+  const verifier = pkceVerifier();
+  sessionStorage.setItem("ditona_pkce_verifier", verifier);
+  const challenge = await pkceChallenge(verifier);
   const redirectTo = encodeURIComponent(`${location.origin}/login`);
-  location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`;
+  location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}&code_challenge=${challenge}&code_challenge_method=S256&apikey=${SUPABASE_ANON_KEY}`;
 }
 
-export async function restoreCustomerFromUrl() {
-  const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
-  const accessToken = hash.get("access_token");
-  if (!accessToken) return null;
+async function sessionFromAccessToken(accessToken) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: {
       "apikey": SUPABASE_ANON_KEY,
@@ -404,6 +457,33 @@ export async function restoreCustomerFromUrl() {
   await rememberCustomer(user, localStorage.getItem("ditona_customer_role") || "google");
   history.replaceState({}, "", "/login");
   return session;
+}
+
+export async function restoreCustomerFromUrl() {
+  const query = new URLSearchParams(location.search);
+  const code = query.get("code");
+  if (code) {
+    const verifier = sessionStorage.getItem("ditona_pkce_verifier");
+    sessionStorage.removeItem("ditona_pkce_verifier");
+    if (!verifier) return null;
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
+    });
+    if (!res.ok) return null;
+    const session = await res.json();
+    if (!session.access_token) return null;
+    sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
+    await rememberCustomer(session.user, localStorage.getItem("ditona_customer_role") || "google");
+    history.replaceState({}, "", "/login");
+    return session;
+  }
+
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const accessToken = hash.get("access_token");
+  if (!accessToken) return null;
+  return sessionFromAccessToken(accessToken);
 }
 
 export function currentCustomer() {

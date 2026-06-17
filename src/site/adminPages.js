@@ -10,8 +10,14 @@ export function requireAdmin() {
   return true;
 }
 
+function setAdminMode(enabled) {
+  document.documentElement.classList.toggle("admin-mode", enabled);
+  document.body.classList.toggle("admin-mode", enabled);
+}
+
 export function adminLogin() {
   clearTimers();
+  setAdminMode(true);
   document.querySelector("#app").innerHTML = `
     <main class="admin-login">
       <form id="login-form" class="panel login-panel">
@@ -60,6 +66,7 @@ function markSeen(key) {
 
 export function adminShell(content, active = "dashboard") {
   clearTimers();
+  setAdminMode(true);
   const counts = notifications();
   const collapsed = localStorage.getItem("ditona_admin_nav_collapsed") === "true";
   document.querySelector("#app").innerHTML = `
@@ -324,34 +331,42 @@ export function adminSettings() {
   });
 }
 
-function readLocalFile(file, fallback) {
-  return new Promise((resolve) => {
-    if (!file) return resolve(fallback || "");
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.readAsDataURL(file);
-  });
-}
-
 async function readImage(input, fallback, folder = "admin") {
   const file = input.files?.[0];
   if (!file) return fallback || "";
-  const remoteUrl = await uploadMediaFile(file, folder);
-  return remoteUrl || await readLocalFile(file, fallback);
+  return uploadMediaFile(file, folder);
+}
+
+async function persistAdminData(reload) {
+  try {
+    await saveData();
+    reload();
+  } catch (err) {
+    alert(err.message || "Synchronisation impossible.");
+  }
+}
+
+async function submitAdminForm(task) {
+  try {
+    await task();
+  } catch (err) {
+    alert(err.message || "Enregistrement impossible.");
+  }
 }
 
 function bindHomeForm() {
   const form = document.querySelector("#home-form");
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    await submitAdminForm(async () => {
     const fd = new FormData(form);
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = data.homeMedia.find((s) => s.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "home");
     const next = { id, title: fd.get("title"), subtitle: fd.get("subtitle"), type: fd.get("type"), image };
     data.homeMedia = existing ? data.homeMedia.map((s) => s.id === id ? next : s) : [next, ...data.homeMedia];
-    saveData();
-    adminHome();
+    await persistAdminData(adminHome);
+    });
   });
 }
 
@@ -359,14 +374,15 @@ function bindHomeProofForm() {
   const form = document.querySelector("#home-proof-form");
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    await submitAdminForm(async () => {
     const fd = new FormData(form);
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = (data.homeProof || []).find((s) => s.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "home-proof");
     const next = { id, title: fd.get("title"), subtitle: fd.get("subtitle"), type: fd.get("type"), image };
     data.homeProof = existing ? data.homeProof.map((s) => s.id === id ? next : s) : [next, ...(data.homeProof || [])];
-    saveData();
-    adminHome();
+    await persistAdminData(adminHome);
+    });
   });
 }
 
@@ -374,14 +390,15 @@ function bindMachineForm() {
   const form = document.querySelector("#machine-form");
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    await submitAdminForm(async () => {
     const fd = new FormData(form);
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = data.machines.find((m) => m.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "machines");
     const next = { id, name: fd.get("name"), category: fd.get("category"), price: Number(fd.get("price")) || null, status: fd.get("status"), description: fd.get("description"), comment: fd.get("comment"), image };
     data.machines = existing ? data.machines.map((m) => m.id === id ? next : m) : [next, ...data.machines];
-    saveData();
-    adminMachines();
+    await persistAdminData(adminMachines);
+    });
   });
 }
 
@@ -389,6 +406,7 @@ function bindRealisationForm() {
   const form = document.querySelector("#realisation-form");
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    await submitAdminForm(async () => {
     const fd = new FormData(form);
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = data.realisations.find((r) => r.id === id);
@@ -396,8 +414,8 @@ function bindRealisationForm() {
     const rating = Math.max(0, Math.min(5, Number(fd.get("rating")) || 0));
     const next = { id, title: fd.get("title"), price: Number(fd.get("price")) || null, rating, review: fd.get("review"), comment: fd.get("comment"), image };
     data.realisations = existing ? data.realisations.map((r) => r.id === id ? next : r) : [next, ...data.realisations];
-    saveData();
-    adminRealisations();
+    await persistAdminData(adminRealisations);
+    });
   });
 }
 
@@ -413,13 +431,14 @@ function bindSectionMediaForm() {
   form.key.addEventListener("change", load);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    await submitAdminForm(async () => {
     const fd = new FormData(form);
     const key = fd.get("key");
     const existing = data.sectionMedia[key] || {};
     const image = await readImage(form.imageFile, fd.get("image") || existing.image, `section-${key}`);
     data.sectionMedia[key] = { type: fd.get("type"), title: fd.get("title"), subtitle: fd.get("subtitle"), image };
-    saveData();
-    adminSections();
+    await persistAdminData(adminSections);
+    });
   });
   load();
 }
@@ -428,14 +447,15 @@ function bindServiceForm() {
   const form = document.querySelector("#service-form");
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    await submitAdminForm(async () => {
     const fd = new FormData(form);
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = data.services.find((s) => s.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "services");
     const next = { id, title: fd.get("title"), text: fd.get("text"), image };
     data.services = existing ? data.services.map((s) => s.id === id ? next : s) : [next, ...data.services];
-    saveData();
-    adminServices();
+    await persistAdminData(adminServices);
+    });
   });
 }
 
