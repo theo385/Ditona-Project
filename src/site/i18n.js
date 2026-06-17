@@ -353,7 +353,7 @@ const textTranslations = {
     "Numero client ou mot de passe oublie ?": "Esqueceu numero de cliente ou senha?",
     "S'inscrire en tant qu'acheteur": "Registar como comprador",
     "Liste des favoris synchronisee, offres speciales et suivi des demandes.": "Favoritos sincronizados, ofertas especiais e seguimento de pedidos.",
-    "S'inscrire gratuitement": "Registar gratis",
+    "S'inscrire ": "Registar gratis",
     "Informez-vous sur les prestations, les tarifs et les conditions de vente DITONA.": "Informe-se sobre servicos, tarifas e condicoes de venda DITONA.",
     "Contacter DITONA": "Contactar DITONA",
     "Niveau actuel": "Nivel atual",

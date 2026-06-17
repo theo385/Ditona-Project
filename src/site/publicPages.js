@@ -163,7 +163,7 @@ export async function loginPage() {
             <p>Liste des favoris synchronisee, offres speciales et suivi des demandes.</p>
             <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
             <label>Mot de passe<input name="password" type="password" required minlength="6"></label>
-            <button class="primary" type="submit">S'inscrire gratuitement</button>
+            <button class="primary" type="submit">S'inscrire </button>
             <button class="google-button" type="button" data-google-login="acheteur">S'inscrire avec Google</button>
             <p class="form-message" data-buyer-message></p>
           </form>
