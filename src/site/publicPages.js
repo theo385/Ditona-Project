@@ -168,7 +168,6 @@ export async function loginPage() {
             <p class="form-message" data-buyer-message></p>
           </form>
           <form id="seller-signup-form" class="panel form-panel">
-            <h2>S'inscrire en tant que vendeur</h2>
             <p>Informez-vous sur les prestations, les tarifs et les conditions de vente DITONA.</p>
             <label>E-mail<input name="email" type="email" required placeholder="vendeur@email.com"></label>
             <label>Mot de passe<input name="password" type="password" required minlength="6"></label>
