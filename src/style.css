@@ -1644,6 +1644,10 @@ label {
     width: 100%;
     min-width: 0;
   }
+  .hamburger-btn {
+    flex-shrink: 0;
+    margin-right: 2px;
+  }
   .site-header-row2 {
     display: flex;
     flex-wrap: nowrap;

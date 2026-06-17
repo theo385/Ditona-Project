@@ -49,6 +49,9 @@ export function publicShell(content, active = "") {
   document.querySelector("#app").innerHTML = `
     <header class="site-header">
       <div class="site-header-row1">
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
         <button class="nav-brand" data-link="/">${logo()}</button>
         <label class="language-select" title="Langue">
           <span class="flag-${currentLanguage()}"></span>
@@ -60,9 +63,6 @@ export function publicShell(content, active = "") {
         </label>
         <button class="primary header-cta" data-link="/machines">${t("action.order")}</button>
         <button class="header-action login-action" data-link="/login" title="${t("action.login")}"><span class="user-icon"></span><small>${t("action.login")}</small></button>
-        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">
-          <span></span><span></span><span></span>
-        </button>
       </div>
       <div class="site-header-row2">
         <nav class="site-nav" id="main-nav">
