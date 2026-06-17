@@ -8,14 +8,14 @@ export const defaults = {
     formation: { type: "image", title: "Formation technique DITONA", subtitle: "Dites ce que vous voulez apprendre et l'equipe vous proposera un programme adapte.", image: "/realisations/ligne-remplissage.jpeg", backImage: "/realisations/machine-labo.jpeg" },
     about: { type: "image", title: "DITONA Engineering", subtitle: "DITONA Engineering developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.", image: "/realisations/maintenance-groupe-1.jpeg" },
     appointment: { type: "image", title: "Rencontrer DITONA Engineering", subtitle: "Planifiez un echange pour un achat, un projet, une maintenance ou une formation.", image: "/realisations/cnc-3w-iso.jpeg" },
-    contact: { type: "image", title: "Envoyer une demande", subtitle: "Demande de devis, information machine, SAV ou formation.", image: "/realisations/maintenance-groupe-2.jpeg" },
+    contact: { type: "image", title: "Envoyer une demande", subtitle: "Demande de devis, information machine, SAV ou formation", image: "/realisations/maintenance-groupe-2.jpeg" },
   },
   homeMedia: [
     {
       id: 1,
       type: "image",
       title: "Fabrication de machines industrielles",
-      subtitle: "Conception, montage et mise au point d'equipements sur mesure.",
+      subtitle: "Conception, montage et mise au point d'equipements sur mesure",
       image: "/realisations/ligne-remplissage.jpeg",
       backImage: "/realisations/cnc-3w-iso.jpeg",
     },

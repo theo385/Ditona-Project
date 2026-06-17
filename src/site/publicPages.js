@@ -185,9 +185,10 @@ export async function loginPage() {
 }
 
 function bindCustomerAuth() {
-  document.querySelector("[data-customer-logout]")?.addEventListener("click", () => {
+  document.querySelector("[data-customer-logout]")?.addEventListener("click", async () => {
     logoutCustomer();
-    loginPage();
+    await loginPage();
+    window.ditonaBindGlobal?.();
   });
   document.querySelectorAll("[data-google-login]").forEach((button) => button.addEventListener("click", () => loginWithGoogle(button.dataset.googleLogin)));
   document.querySelector("#customer-login-form")?.addEventListener("submit", async (event) => {
@@ -197,6 +198,7 @@ function bindCustomerAuth() {
       const fd = new FormData(event.target);
       await loginCustomer(fd.get("email"), fd.get("password"));
       await loginPage();
+      window.ditonaBindGlobal?.();
     } catch (err) {
       message.textContent = err.message;
     }
@@ -212,6 +214,7 @@ async function signupFromForm(event, role, messageSelector) {
     const fd = new FormData(event.target);
     await signupCustomer(fd.get("email"), fd.get("password"), role);
     await loginPage();
+    window.ditonaBindGlobal?.();
   } catch (err) {
     message.textContent = err.message;
   }
