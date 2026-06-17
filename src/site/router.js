@@ -1,5 +1,6 @@
 import {
   adminAppointments,
+  adminAccounts,
   adminDashboard,
   adminHome,
   adminMachines,
@@ -158,7 +159,10 @@ export function render() {
   if (path === "/about") return aboutPage(), bindGlobal();
   if (path === "/rendez-vous") return appointmentPage(), bindGlobal();
   if (path === "/contact") return contactPage(), bindGlobal();
-  if (path === "/login") return loginPage(), bindGlobal();
+  if (path === "/login") {
+    loginPage().then(bindGlobal);
+    return;
+  }
   if (path.startsWith("/admin")) {
     // Rafraîchir les données Supabase à chaque navigation admin
     refreshAdminData().then(() => {
@@ -171,6 +175,7 @@ export function render() {
       if (path === "/admin/appointments") return adminAppointments();
       if (path === "/admin/orders") return adminOrders();
       if (path === "/admin/messages") return adminMessages();
+      if (path === "/admin/accounts") return adminAccounts();
       if (path === "/admin/settings") return adminSettings();
       adminDashboard();
     });

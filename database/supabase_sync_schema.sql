@@ -65,20 +65,45 @@ CREATE TABLE IF NOT EXISTS site_content (
   updated_at TEXT DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS customer_accounts (
+  id TEXT PRIMARY KEY,
+  email TEXT,
+  name TEXT DEFAULT '',
+  role TEXT DEFAULT 'acheteur',
+  provider TEXT DEFAULT '',
+  last_login_at TEXT DEFAULT ''
+);
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('ditona-media', 'ditona-media', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE training_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE site_content ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customer_accounts ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS allow_all_orders ON orders;
 DROP POLICY IF EXISTS allow_all_messages ON messages;
 DROP POLICY IF EXISTS allow_all_appointments ON appointments;
 DROP POLICY IF EXISTS allow_all_training ON training_requests;
 DROP POLICY IF EXISTS allow_all_site_content ON site_content;
+DROP POLICY IF EXISTS allow_all_customer_accounts ON customer_accounts;
+DROP POLICY IF EXISTS allow_public_media_read ON storage.objects;
+DROP POLICY IF EXISTS allow_public_media_insert ON storage.objects;
+DROP POLICY IF EXISTS allow_public_media_update ON storage.objects;
+DROP POLICY IF EXISTS allow_public_media_delete ON storage.objects;
 
 CREATE POLICY allow_all_orders ON orders FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_messages ON messages FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_appointments ON appointments FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_training ON training_requests FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_site_content ON site_content FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY allow_all_customer_accounts ON customer_accounts FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY allow_public_media_read ON storage.objects FOR SELECT USING (bucket_id = 'ditona-media');
+CREATE POLICY allow_public_media_insert ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'ditona-media');
+CREATE POLICY allow_public_media_update ON storage.objects FOR UPDATE USING (bucket_id = 'ditona-media') WITH CHECK (bucket_id = 'ditona-media');
+CREATE POLICY allow_public_media_delete ON storage.objects FOR DELETE USING (bucket_id = 'ditona-media');

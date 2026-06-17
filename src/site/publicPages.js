@@ -1,4 +1,4 @@
-import { data, saveData, today, addOrder, addMessage, addAppointment, addTrainingRequest } from "./store.js";
+import { data, saveData, today, addOrder, addMessage, addAppointment, addTrainingRequest, currentCustomer, loginCustomer, loginWithGoogle, logoutCustomer, restoreCustomerFromUrl, signupCustomer } from "./store.js";
 import { machineCard, mediaTag, orderForm, publicShell, realisationCard, serviceCard, setSlideTimer, visualTitle } from "./components.js";
 import { t, tr } from "./i18n.js";
 
@@ -132,34 +132,89 @@ export function aboutPage() {
   `, "/about");
 }
 
-export function loginPage() {
+export async function loginPage() {
+  await restoreCustomerFromUrl();
+  const session = currentCustomer();
   publicShell(`
     <section class="section login-public">
       <div class="section-head"><div><p class="eyebrow">Compte client</p><h1>Connexion utilisateur</h1></div></div>
-      <div class="login-grid">
-        <form class="panel form-panel">
+      ${session?.user ? `
+        <div class="panel form-panel customer-session">
+          <h2>Connecte</h2>
+          <p>${session.user.email || "Votre compte client est actif."}</p>
+          <button class="primary" data-link="/machines">Voir les machines</button>
+          <button class="ghost" type="button" data-customer-logout>Se deconnecter</button>
+        </div>
+      ` : `
+        <div class="login-grid">
+        <form id="customer-login-form" class="panel form-panel">
           <h2>Se connecter</h2>
-          <label>Numero client ou e-mail<input name="email" type="email"></label>
-          <label>Mot de passe<input name="password" type="password"></label>
+          <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
+          <label>Mot de passe<input name="password" type="password" required></label>
           <label class="check-line"><input type="checkbox" checked> Rester connecte</label>
-          <button class="primary" type="button">Se connecter</button>
+          <button class="primary" type="submit">Se connecter</button>
+          <button class="google-button" type="button" data-google-login="acheteur">Continuer avec Google</button>
           <button class="ghost" type="button" data-link="/contact">Numero client ou mot de passe oublie ?</button>
+          <p class="form-message" data-login-message></p>
         </form>
         <div class="login-stack">
-          <article class="panel form-panel">
+          <form id="buyer-signup-form" class="panel form-panel">
             <h2>S'inscrire en tant qu'acheteur</h2>
             <p>Liste des favoris synchronisee, offres speciales et suivi des demandes.</p>
-            <button class="primary" data-link="/contact">S'inscrire gratuitement</button>
-          </article>
-          <article class="panel form-panel">
+            <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
+            <label>Mot de passe<input name="password" type="password" required minlength="6"></label>
+            <button class="primary" type="submit">S'inscrire gratuitement</button>
+            <button class="google-button" type="button" data-google-login="acheteur">S'inscrire avec Google</button>
+            <p class="form-message" data-buyer-message></p>
+          </form>
+          <form id="seller-signup-form" class="panel form-panel">
             <h2>S'inscrire en tant que vendeur</h2>
             <p>Informez-vous sur les prestations, les tarifs et les conditions de vente DITONA.</p>
-            <button class="ghost" data-link="/contact">Contacter DITONA</button>
-          </article>
+            <label>E-mail<input name="email" type="email" required placeholder="vendeur@email.com"></label>
+            <label>Mot de passe<input name="password" type="password" required minlength="6"></label>
+            <button class="ghost" type="submit">Creer le compte vendeur</button>
+            <button class="google-button" type="button" data-google-login="vendeur">Continuer avec Google</button>
+            <p class="form-message" data-seller-message></p>
+          </form>
         </div>
       </div>
+      `}
     </section>
   `, "/login");
+  bindCustomerAuth();
+}
+
+function bindCustomerAuth() {
+  document.querySelector("[data-customer-logout]")?.addEventListener("click", () => {
+    logoutCustomer();
+    loginPage();
+  });
+  document.querySelectorAll("[data-google-login]").forEach((button) => button.addEventListener("click", () => loginWithGoogle(button.dataset.googleLogin)));
+  document.querySelector("#customer-login-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = document.querySelector("[data-login-message]");
+    try {
+      const fd = new FormData(event.target);
+      await loginCustomer(fd.get("email"), fd.get("password"));
+      await loginPage();
+    } catch (err) {
+      message.textContent = err.message;
+    }
+  });
+  document.querySelector("#buyer-signup-form")?.addEventListener("submit", (event) => signupFromForm(event, "acheteur", "[data-buyer-message]"));
+  document.querySelector("#seller-signup-form")?.addEventListener("submit", (event) => signupFromForm(event, "vendeur", "[data-seller-message]"));
+}
+
+async function signupFromForm(event, role, messageSelector) {
+  event.preventDefault();
+  const message = document.querySelector(messageSelector);
+  try {
+    const fd = new FormData(event.target);
+    await signupCustomer(fd.get("email"), fd.get("password"), role);
+    await loginPage();
+  } catch (err) {
+    message.textContent = err.message;
+  }
 }
 
 export function appointmentPage() {

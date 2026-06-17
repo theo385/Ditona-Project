@@ -10,6 +10,7 @@ import { DEFAULT_ADMIN_PASSWORD, defaults } from "./defaults.js";
 // ── Supabase config ─────────────────────────────────────────
 const SUPABASE_URL = "https://zwbwsiyvoqdpxyqiylfb.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3YndzaXl2b3FkcHh5cWl5bGZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2ODc1MDcsImV4cCI6MjA5NzI2MzUwN30.6Kzstz0oEkkQATQVhKUMt1oMOaXnj8F_ouNXSINEDjc";
+const STORAGE_BUCKET = "ditona-media";
 
 const headers = {
   "Content-Type": "application/json",
@@ -26,6 +27,7 @@ const upsertHeaders = {
 export const STORAGE_KEY = "ditona_site_data_v3";
 export const SESSION_KEY = "ditona_admin_session";
 export const PASSWORD_KEY = "ditona_admin_password";
+export const CUSTOMER_SESSION_KEY = "ditona_customer_session";
 
 export function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -74,6 +76,45 @@ async function sbInsert(table, row) {
   } catch (err) {
     console.error(`[Supabase] INSERT ${table}:`, err);
     return null;
+  }
+}
+
+async function sbUpsert(table, row, conflictKey = "id") {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${conflictKey}`, {
+      method: "POST",
+      headers: upsertHeaders,
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return await res.json();
+  } catch (err) {
+    console.error(`[Supabase] UPSERT ${table}:`, err);
+    return null;
+  }
+}
+
+export async function uploadMediaFile(file, folder = "admin") {
+  if (!file) return "";
+  const extension = file.name?.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+  const cleanFolder = String(folder).replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+  const path = `${cleanFolder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${path}`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": file.type || "application/octet-stream",
+        "x-upsert": "true",
+      },
+      body: file,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
+  } catch (err) {
+    console.warn("[Supabase] upload media indisponible, fallback local:", err);
+    return "";
   }
 }
 
@@ -246,11 +287,12 @@ export let data = loadLocalData();
 
 // ── Charger les données Supabase au démarrage ────────────────
 export async function loadRemoteData() {
-  const [orders, messages, appointments, trainingRequests, remoteContent] = await Promise.all([
+  const [orders, messages, appointments, trainingRequests, accounts, remoteContent] = await Promise.all([
     sbSelect("orders"),
     sbSelect("messages"),
     sbSelect("appointments"),
     sbSelect("training_requests"),
+    sbSelect("customer_accounts", "last_login_at"),
     sbSelectContent(),
   ]);
   if (remoteContent) {
@@ -269,6 +311,7 @@ export async function loadRemoteData() {
   data.messages = messages.map(appRequestFromSupabase);
   data.appointments = appointments.map(appRequestFromSupabase);
   data.trainingRequests = trainingRequests.map(appRequestFromSupabase);
+  data.customerAccounts = accounts;
 }
 
 // ── saveData : garde machines/médias en local uniquement ─────
@@ -304,6 +347,87 @@ export async function addTrainingRequest(request) {
   const row = { ...request };
   data.trainingRequests.unshift(row);
   await sbInsert("training_requests", requestToSupabase(row));
+}
+
+export async function loginCustomer(email, password) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const cleanPassword = String(password || "");
+  if (!cleanEmail || !cleanPassword) throw new Error("Email et mot de passe requis.");
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
+  });
+  if (!res.ok) throw new Error("Connexion impossible. Verifiez l'email et le mot de passe.");
+  const session = await res.json();
+  await rememberCustomer(session.user, "email");
+  sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
+  return session;
+}
+
+export async function signupCustomer(email, password, role = "acheteur") {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const cleanPassword = String(password || "");
+  if (!cleanEmail || !cleanPassword) throw new Error("Email et mot de passe requis.");
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ email: cleanEmail, password: cleanPassword, data: { role } }),
+  });
+  if (!res.ok) throw new Error("Inscription impossible. Essayez un autre email ou mot de passe.");
+  const session = await res.json();
+  await rememberCustomer(session.user || { id: cleanEmail, email: cleanEmail }, role);
+  sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
+  return session;
+}
+
+export function loginWithGoogle(role = "acheteur") {
+  localStorage.setItem("ditona_customer_role", role);
+  const redirectTo = encodeURIComponent(`${location.origin}/login`);
+  location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`;
+}
+
+export async function restoreCustomerFromUrl() {
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const accessToken = hash.get("access_token");
+  if (!accessToken) return null;
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${accessToken}`,
+    },
+  });
+  if (!res.ok) return null;
+  const user = await res.json();
+  const session = { access_token: accessToken, user };
+  sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
+  await rememberCustomer(user, localStorage.getItem("ditona_customer_role") || "google");
+  history.replaceState({}, "", "/login");
+  return session;
+}
+
+export function currentCustomer() {
+  try {
+    return JSON.parse(sessionStorage.getItem(CUSTOMER_SESSION_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+export function logoutCustomer() {
+  sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
+}
+
+async function rememberCustomer(user, role) {
+  if (!user?.email && !user?.id) return;
+  await sbUpsert("customer_accounts", {
+    id: user.id || user.email,
+    email: user.email || "",
+    name: user.user_metadata?.full_name || user.user_metadata?.name || "",
+    role,
+    provider: user.app_metadata?.provider || role,
+    last_login_at: new Date().toISOString(),
+  });
 }
 
 // ── API admin : mettre à jour statut/réponse ─────────────────
