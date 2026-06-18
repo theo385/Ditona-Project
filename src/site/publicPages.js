@@ -1,4 +1,4 @@
-import { data, saveData, today, addOrder, addMessage, addAppointment, addTrainingRequest, currentCustomer, loginCustomer, loginWithGoogle, logoutCustomer, restoreCustomerFromUrl, signupCustomer } from "./store.js";
+import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer } from "./store.js";
 import { machineCard, mediaTag, orderForm, publicShell, realisationCard, requestIdentityFields, serviceCard, setSlideTimer, visualTitle } from "./components.js";
 import { t, tr } from "./i18n.js";
 
@@ -176,16 +176,6 @@ function bindCustomerAuth() {
     await loginPage();
     window.ditonaBindGlobal?.();
   });
-  document.querySelectorAll("[data-google-login]").forEach((button) => button.addEventListener("click", async () => {
-    const message = button.closest("form")?.querySelector(".form-message") || document.querySelector("[data-login-message]");
-    try {
-      button.disabled = true;
-      await loginWithGoogle(button.dataset.googleLogin);
-    } catch (err) {
-      if (message) message.textContent = err.message;
-      button.disabled = false;
-    }
-  }));
   document.querySelector("#customer-login-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const message = document.querySelector("[data-login-message]");

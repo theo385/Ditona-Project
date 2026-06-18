@@ -131,7 +131,6 @@ function bindAdminActions() {
   document.querySelectorAll("[data-delete-service]").forEach((el) => el.addEventListener("click", async () => { data.services = data.services.filter((s) => s.id !== Number(el.dataset.deleteService)); await saveData(); adminServices(); }));
   document.querySelectorAll("[data-save-order]").forEach((el) => el.addEventListener("click", () => saveRequest("order", el.dataset.saveOrder)));
   document.querySelectorAll("[data-save-appointment]").forEach((el) => el.addEventListener("click", () => saveRequest("appointment", el.dataset.saveAppointment)));
-  document.querySelectorAll("[data-save-message]").forEach((el) => el.addEventListener("click", () => saveRequest("message", el.dataset.saveMessage)));
   document.querySelectorAll("[data-save-formation]").forEach((el) => el.addEventListener("click", () => saveRequest("formation", el.dataset.saveFormation)));
   document.querySelectorAll("[data-delete-request]").forEach((el) => el.addEventListener("click", () => deleteRequest(el.dataset.deleteRequestType, el.dataset.deleteRequest)));
   document.querySelectorAll("[data-message-select]").forEach((el) => el.addEventListener("click", () => {
@@ -195,6 +194,13 @@ export async function startApp() {
   window.ditonaGo = go;
   window.ditonaBindGlobal = bindGlobal;
   window.addEventListener("popstate", render);
+  setInterval(() => {
+    const publicSyncedPaths = ["/", "/machines", "/realisations", "/services"];
+    if (document.hidden || location.pathname.startsWith("/admin") || !publicSyncedPaths.includes(location.pathname)) return;
+    refreshSiteContent().then((changed) => {
+      if (changed) render();
+    });
+  }, 5000);
   document.addEventListener("visibilitychange", () => {
     if (document.hidden || location.pathname.startsWith("/admin")) return;
     refreshSiteContent().then(() => {

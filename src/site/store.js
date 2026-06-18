@@ -319,6 +319,9 @@ function applyRemoteContent(remoteContent) {
     appointments: [],
     trainingRequests: [],
   });
+  const current = JSON.stringify(localContentSnapshot());
+  const incoming = JSON.stringify(synced);
+  if (current === incoming) return false;
   Object.assign(data, synced);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
   return true;
