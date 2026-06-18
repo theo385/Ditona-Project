@@ -226,10 +226,7 @@ const textTranslations = {
     "Mot de passe": "Password",
     "Rester connecte": "Stay signed in",
     "Numero client ou mot de passe oublie ?": "Forgot customer number or password?",
-    "S'inscrire en tant qu'acheteur": "Register as a buyer",
-    "Liste des favoris synchronisee, offres speciales et suivi des demandes.": "Synced favorites, special offers and request tracking.",
-    "S'inscrire": "Register for free",
-    "Informez-vous sur les prestations, les tarifs et les conditions de vente DITONA.": "Ask about DITONA services, pricing and sales terms.",
+    "S'inscrire": "Register",
     "Contacter DITONA": "Contact DITONA",
     "Niveau actuel": "Current level",
     "Date souhaitee": "Preferred date",
@@ -351,10 +348,7 @@ const textTranslations = {
     "Mot de passe": "Senha",
     "Rester connecte": "Manter sessao",
     "Numero client ou mot de passe oublie ?": "Esqueceu numero de cliente ou senha?",
-    "S'inscrire en tant qu'acheteur": "Registar como comprador",
-    "Liste des favoris synchronisee, offres speciales et suivi des demandes.": "Favoritos sincronizados, ofertas especiais e seguimento de pedidos.",
-    "S'inscrire ": "Registar gratis",
-    "Informez-vous sur les prestations, les tarifs et les conditions de vente DITONA.": "Informe-se sobre servicos, tarifas e condicoes de venda DITONA.",
+    "S'inscrire ": "Registar",
     "Contacter DITONA": "Contactar DITONA",
     "Niveau actuel": "Nivel atual",
     "Date souhaitee": "Data desejada",
@@ -490,13 +484,18 @@ export function setLanguage(lang) {
 
 export function t(key) {
   const lang = currentLanguage();
-  return dictionaries[lang]?.[key] || dictionaries.fr[key] || key;
+  return cleanDisplayText(dictionaries[lang]?.[key] || dictionaries.fr[key] || key);
 }
 
 export function tr(text) {
   const lang = currentLanguage();
-  if (lang === "fr") return text;
-  return textTranslations[lang]?.[text] || text;
+  if (lang === "fr") return cleanDisplayText(text);
+  return cleanDisplayText(textTranslations[lang]?.[text] || text);
+}
+
+function cleanDisplayText(value) {
+  if (typeof value !== "string") return value;
+  return value.replace(/\s*\.+$/g, "");
 }
 
 export function translateDom(root = document) {
@@ -506,7 +505,7 @@ export function translateDom(root = document) {
   root.querySelectorAll("input[placeholder], textarea[placeholder]").forEach((field) => {
     const orig = field.dataset.origPlaceholder || field.placeholder;
     if (!field.dataset.origPlaceholder) field.dataset.origPlaceholder = orig;
-    field.placeholder = lang === "fr" ? orig : (textTranslations[lang]?.[orig] || orig);
+    field.placeholder = cleanDisplayText(lang === "fr" ? orig : (textTranslations[lang]?.[orig] || orig));
   });
 
   // --- Noeuds texte ---
@@ -528,9 +527,10 @@ export function translateDom(root = document) {
     if (!parent.dataset.origText) parent.dataset.origText = trimmed;
     const frSource = parent.dataset.origText;
     if (lang === "fr") {
-      if (frSource && frSource !== trimmed) node.nodeValue = current.replace(trimmed, frSource);
+      const clean = cleanDisplayText(frSource);
+      if (frSource && clean !== trimmed) node.nodeValue = current.replace(trimmed, clean);
     } else {
-      const translated = textTranslations[lang]?.[frSource] || frSource;
+      const translated = cleanDisplayText(textTranslations[lang]?.[frSource] || frSource);
       if (translated !== trimmed) node.nodeValue = current.replace(trimmed, translated);
     }
   });

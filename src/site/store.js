@@ -414,10 +414,12 @@ export async function loginCustomer(email, password) {
   return session;
 }
 
-export async function signupCustomer(email, password, role = "acheteur") {
+export async function signupCustomer(email, password, role = "acheteur", confirmPassword = password) {
   const cleanEmail = String(email || "").trim().toLowerCase();
   const cleanPassword = String(password || "");
+  const cleanConfirm = String(confirmPassword || "");
   if (!cleanEmail || !cleanPassword) throw new Error("E-mail et mot de passe requis.");
+  if (cleanPassword !== cleanConfirm) throw new Error("Les mots de passe ne correspondent pas.");
   if (cleanPassword.length < 6) throw new Error("Le mot de passe doit contenir au moins 6 caracteres.");
   const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
     method: "POST",

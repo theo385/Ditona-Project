@@ -1,4 +1,4 @@
-import { data } from "./store.js";
+import { currentCustomer, data } from "./store.js";
 import { escapeHtml, money } from "./format.js";
 import { currentLanguage, t, tr, translateDom } from "./i18n.js";
 
@@ -147,6 +147,38 @@ export function publicShell(content, active = "") {
   translateDom(document.querySelector("#app"));
 }
 
+function customerIdentity() {
+  const session = currentCustomer();
+  const user = session?.user;
+  if (!user) return null;
+  const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email || "Client connecte";
+  return {
+    name,
+    firstname: "",
+    email: user.email || "",
+    phone: "",
+  };
+}
+
+export function requestIdentityFields() {
+  const customer = customerIdentity();
+  if (!customer) {
+    return `
+      <label>Nom<input name="name" required></label>
+      <label>Prenom<input name="firstname"></label>
+      <label>Numero WhatsApp<input name="phone" required placeholder="+228 ..."></label>
+      <label>Email<input name="email" type="email" required placeholder="votre@email.com"></label>
+    `;
+  }
+  return `
+    <input name="name" type="hidden" value="${escapeHtml(customer.name)}">
+    <input name="firstname" type="hidden" value="${escapeHtml(customer.firstname)}">
+    <input name="email" type="hidden" value="${escapeHtml(customer.email)}">
+    <input name="phone" type="hidden" value="${escapeHtml(customer.phone)}">
+    <p class="connected-note">Demande envoyee avec le compte ${escapeHtml(customer.email || customer.name)}</p>
+  `;
+}
+
 export function chatWidget() {
   return `
     <button class="chat-button" data-chat-open>${t("chat.button")}</button>
@@ -204,11 +236,8 @@ export function orderForm(machine) {
           <div><p class="eyebrow">Commande</p><h2>${escapeHtml(machine.name)}</h2></div>
           <button type="button" class="ghost small" data-close-modal>Fermer</button>
         </div>
-        <label>Nom<input name="name" required></label>
-        <label>Prenom<input name="firstname" required></label>
-        <label>Numero WhatsApp<input name="phone" required placeholder="+228 ..."></label>
-        <label>Email facultatif<input name="email" type="email" placeholder="votre@email.com"></label>
-        <label>Message<textarea name="message" rows="4" placeholder="Quantite, ville, precision technique..."></textarea></label>
+        ${requestIdentityFields()}
+        <label>Precision sur le besoin<textarea name="message" rows="4" required placeholder="Quantite, ville, delai, details techniques"></textarea></label>
         <button class="primary" type="submit">Envoyer la commande</button>
       </form>
     </section>
@@ -361,25 +390,22 @@ export function messageConversation(messages = []) {
 
 export function messageThread(item) {
   if (!item) return `<p class="empty">Selectionnez un message.</p>`;
-  const id = item.id;
-  const reply = item.reply || "";
   return `
     <div class="thread-head">
       <div>
         <h2>${escapeHtml(item.name || item.client || "Visiteur")}</h2>
-        <p>${escapeHtml(item.email || item.phone || "Client web")}</p>
+        <p>${escapeHtml([item.email, item.phone].filter(Boolean).join(" | ") || "Client web")}</p>
       </div>
       <small>${escapeHtml(item.createdAt || "")}</small>
     </div>
     <div class="thread-chat">
       <p class="bubble client">${escapeHtml(item.message || item.note || item.subject || "")}</p>
       ${item.autoReply ? `<p class="bubble bot">${escapeHtml(item.autoReply)}</p>` : ""}
-      ${reply ? `<p class="bubble admin">${escapeHtml(reply)}</p>` : ""}
     </div>
-    <label class="reply-box">Reponse admin<textarea data-message-reply="${id}" rows="5" placeholder="Ecrire la reponse...">${escapeHtml(reply)}</textarea></label>
     <div class="thread-actions">
-      <button class="primary" data-save-message="${id}">Envoyer / enregistrer</button>
-      <button class="danger" data-delete-request="${id}" data-delete-request-type="message">Supprimer</button>
+      ${item.email ? `<a class="primary" href="mailto:${escapeHtml(item.email)}">Contacter par email</a>` : ""}
+      ${item.phone ? `<a class="ghost" href="https://wa.me/${escapeHtml(String(item.phone).replace(/\D/g, ""))}" target="_blank" rel="noopener">Contacter WhatsApp</a>` : ""}
+      <button class="danger" data-delete-request="${escapeHtml(item.id)}" data-delete-request-type="message">Supprimer</button>
     </div>
   `;
 }

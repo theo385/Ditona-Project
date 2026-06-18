@@ -849,11 +849,11 @@ label {
 }
 
 .admin-app {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  --admin-side-width: 240px;
+  display: block;
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(90deg, var(--ink) 0 240px, var(--surface) 240px);
+  background: var(--surface);
 }
 
 html.admin-mode,
@@ -863,22 +863,24 @@ body.admin-mode {
 }
 
 .admin-app.admin-collapsed {
-  grid-template-columns: 76px minmax(0, 1fr);
-  background: linear-gradient(90deg, var(--ink) 0 76px, var(--surface) 76px);
+  --admin-side-width: 76px;
 }
 
 .admin-side {
   position: fixed;
   top: 0;
   left: 0;
+  bottom: 0;
   z-index: 70;
-  width: 240px;
+  width: var(--admin-side-width);
   height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   padding: 18px;
   color: white;
   background: linear-gradient(180deg, var(--ink), #10243a);
+  scrollbar-gutter: stable;
 }
 
 .admin-side .brand { color: white; margin-bottom: 26px; }
@@ -964,9 +966,11 @@ body.admin-mode {
 }
 
 .admin-main {
-  grid-column: 2;
+  margin-left: var(--admin-side-width);
+  width: calc(100vw - var(--admin-side-width));
   height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   padding: clamp(18px, 4vw, 36px);
 }
@@ -1378,6 +1382,16 @@ body.admin-mode {
 
 .customer-session {
   max-width: 620px;
+}
+
+.connected-note {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink) !important;
+  background: var(--surface);
+  font-weight: 800;
 }
 
 .accounts-panel {
@@ -1817,24 +1831,20 @@ body.admin-mode {
   .section-head { flex-direction: column; align-items: stretch; }
 
   /* ===== ADMIN ===== */
-  .admin-app, .admin-app.admin-collapsed { grid-template-columns: 1fr; height: 100vh; }
+  .admin-app, .admin-app.admin-collapsed { height: 100vh; }
   .admin-app, .admin-app.admin-collapsed { background: var(--surface); }
   .admin-side {
     position: fixed;
-    width: min(350px, 100vw);
+    width: var(--admin-side-width);
     max-width: 100vw;
     height: 100vh;
   }
-  .admin-collapsed .admin-side { width: 76px; }
   .admin-main {
-    grid-column: 1;
     height: 100vh;
     overflow-y: auto;
-    margin-left: 76px;
+    margin-left: var(--admin-side-width);
+    width: calc(100vw - var(--admin-side-width));
     padding: 16px 12px;
-  }
-  .admin-app:not(.admin-collapsed) .admin-main {
-    margin-left: 0;
   }
   .account-row { grid-template-columns: 1fr; }
   .activity-row { grid-template-columns: 1fr; }

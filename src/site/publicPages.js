@@ -1,12 +1,12 @@
 import { data, saveData, today, addOrder, addMessage, addAppointment, addTrainingRequest, currentCustomer, loginCustomer, loginWithGoogle, logoutCustomer, restoreCustomerFromUrl, signupCustomer } from "./store.js";
-import { machineCard, mediaTag, orderForm, publicShell, realisationCard, serviceCard, setSlideTimer, visualTitle } from "./components.js";
+import { machineCard, mediaTag, orderForm, publicShell, realisationCard, requestIdentityFields, serviceCard, setSlideTimer, visualTitle } from "./components.js";
 import { t, tr } from "./i18n.js";
 
 export function homePage() {
   const media = data.homeMedia;
   publicShell(`
     <section class="home-cinema" data-hero>
-      ${media.slice(0, 3).map((item, index) => `
+      ${media.map((item, index) => `
         <article class="cinema-slide ${index === 0 ? "active" : ""}" data-slide="${index}">
           ${mediaTag(item)}
           <div class="cinema-caption">
@@ -16,13 +16,13 @@ export function homePage() {
           </div>
         </article>
       `).join("")}
-      <div class="hero-dots">${media.slice(0, 3).map((_, index) => `<button class="${index === 0 ? "active" : ""}" data-dot="${index}"></button>`).join("")}</div>
+      <div class="hero-dots">${media.map((_, index) => `<button class="${index === 0 ? "active" : ""}" data-dot="${index}"></button>`).join("")}</div>
     </section>
     <section class="ticker service-ticker">
       <div>${[...data.services, ...data.services].map((service) => `<span>${tr(service.title)}</span>`).join("")}</div>
     </section>
     <section class="home-proof">
-      ${(data.homeProof || []).slice(0, 3).filter(Boolean).map((item) => `
+      ${(data.homeProof || []).filter(Boolean).map((item) => `
         <article data-link="${item.target || "/realisations"}" class="click-card">
           ${mediaTag(item)}
           <div><strong>${tr(item.title)}</strong><span>${tr(item.subtitle || "")}</span></div>
@@ -101,13 +101,10 @@ export function formationPage() {
     ${visualTitle("formation", "Formation")}
     <section class="section formation-only">
       <form id="formation-form" class="panel form-panel">
-        <label>Nom<input name="name" required></label>
-        <label>Prenom<input name="firstname" required></label>
-        <label>Numero WhatsApp<input name="phone" required placeholder="+228 ..."></label>
-        <label>Email facultatif<input name="email" type="email" placeholder="votre@email.com"></label>
+        ${requestIdentityFields()}
         <label>Ce que vous voulez apprendre<input name="training" required placeholder="CNC, maintenance, automatisation..."></label>
         <label>Niveau actuel<select name="level"><option>Debutant</option><option>Intermediaire</option><option>Avance</option><option>Entreprise / equipe</option></select></label>
-        <label>Objectif<textarea name="message" rows="5" required placeholder="Expliquez votre besoin, votre ville, le nombre de personnes..."></textarea></label>
+        <label>Objectif<textarea name="message" rows="5" required placeholder="Expliquez votre besoin, votre ville, le nombre de personnes"></textarea></label>
         <button class="primary" type="submit">Envoyer la demande de formation</button>
       </form>
     </section>
@@ -149,31 +146,21 @@ export async function loginPage() {
         <div class="login-grid">
         <form id="customer-login-form" class="panel form-panel">
           <h2>Se connecter</h2>
-          <label>Numero client ou e-mail<input name="email" type="email" required placeholder="client@email.com"></label>
+          <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
           <label>Mot de passe<input name="password" type="password" required></label>
           <label class="check-line"><input type="checkbox" checked> Rester connecte</label>
           <button class="primary" type="submit">Se connecter</button>
-          <button class="google-button" type="button" data-google-login="acheteur">Continuer avec Google</button>
-          <button class="ghost" type="button" data-link="/contact">Numero client ou mot de passe oublie ?</button>
+          <button class="ghost" type="button" data-link="/contact">Mot de passe oublie ?</button>
           <p class="form-message" data-login-message></p>
         </form>
         <div class="login-stack">
           <form id="buyer-signup-form" class="panel form-panel">
-            <h2>S'inscrire en tant qu'acheteur</h2>
-            <p>Liste des favoris synchronisee, offres speciales et suivi des demandes.</p>
+            <h2>S'inscrire</h2>
             <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
             <label>Mot de passe<input name="password" type="password" required minlength="6"></label>
-            <button class="primary" type="submit">S'inscrire </button>
-            <button class="google-button" type="button" data-google-login="acheteur">S'inscrire avec Google</button>
+            <label>Confirmer le mot de passe<input name="confirm" type="password" required minlength="6"></label>
+            <button class="primary" type="submit">S'inscrire</button>
             <p class="form-message" data-buyer-message></p>
-          </form>
-          <form id="seller-signup-form" class="panel form-panel">
-            <p>Informez-vous sur les prestations, les tarifs et les conditions de vente DITONA.</p>
-            <label>E-mail<input name="email" type="email" required placeholder="vendeur@email.com"></label>
-            <label>Mot de passe<input name="password" type="password" required minlength="6"></label>
-            <button class="ghost" type="submit">Creer le compte vendeur</button>
-            <button class="google-button" type="button" data-google-login="vendeur">Continuer avec Google</button>
-            <p class="form-message" data-seller-message></p>
           </form>
         </div>
       </div>
@@ -217,7 +204,6 @@ function bindCustomerAuth() {
     }
   });
   document.querySelector("#buyer-signup-form")?.addEventListener("submit", (event) => signupFromForm(event, "acheteur", "[data-buyer-message]"));
-  document.querySelector("#seller-signup-form")?.addEventListener("submit", (event) => signupFromForm(event, "vendeur", "[data-seller-message]"));
 }
 
 async function signupFromForm(event, role, messageSelector) {
@@ -228,7 +214,7 @@ async function signupFromForm(event, role, messageSelector) {
     button.disabled = true;
     message.textContent = "";
     const fd = new FormData(event.target);
-    await signupCustomer(fd.get("email"), fd.get("password"), role);
+    await signupCustomer(fd.get("email"), fd.get("password"), role, fd.get("confirm"));
     await loginPage();
     window.ditonaBindGlobal?.();
   } catch (err) {
@@ -243,9 +229,7 @@ export function appointmentPage() {
     ${visualTitle("appointment", "Rendez-vous")}
     <section class="section appointment-only">
       <form id="appointment-form" class="panel form-panel">
-        <label>Nom complet<input name="name" required></label>
-        <label>Telephone WhatsApp<input name="phone" required placeholder="+228 ..."></label>
-        <label>Email<input name="email" type="email" placeholder="votre@email.com"></label>
+        ${requestIdentityFields()}
         <label>Date souhaitee<input name="date" type="date" required></label>
         <label>Objet<select name="subject"><option>Projet machine</option><option>Maintenance</option><option>Formation</option><option>Accompagnement</option><option>Autre</option></select></label>
         <label>Message<textarea name="message" rows="5" required placeholder="Decrivez votre besoin"></textarea></label>
@@ -266,9 +250,7 @@ export function contactPage(subject = "") {
     ${visualTitle("contact", "Contact")}
     <section class="section contact-layout">
       <form id="contact-form" class="panel form-panel">
-        <label>Nom complet<input name="name" required></label>
-        <label>Email<input name="email" type="email" required placeholder="votre@email.com"></label>
-        <label>Telephone<input name="phone" placeholder="+228 ..."></label>
+        ${requestIdentityFields()}
         <label>Sujet<input name="subject" required value="${subject}"></label>
         <label>Message<textarea name="message" required rows="6"></textarea></label>
         <button class="primary" type="submit">Envoyer le message</button>
