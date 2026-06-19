@@ -591,7 +591,6 @@ export function translateDom(root = document) {
     const trimmed = current.trim();
     const parent = node.parentElement;
     if (!parent) return;
-    // Mémoriser le texte français original sur le premier passage
     if (!parent.dataset.origText) parent.dataset.origText = trimmed;
     const frSource = parent.dataset.origText;
     if (lang === "fr") {
