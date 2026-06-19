@@ -1,11 +1,15 @@
-// ============================================================
-// DITONA Engineering — store.js
-// Données dynamiques (commandes, messages, RDV, formations)
-// synchronisées via Supabase. Machines/services restent en
-// localStorage pour les modifs admin offline.
-// ============================================================
-
 import { DEFAULT_ADMIN_PASSWORD, defaults } from "./defaults.js";
+
+import { adminItem, clearTimers, dashboardActivity, logo, messageConversation, requestConversation } from "./components.js";
+import { countNew } from "./format.js";
+
+export function requireAdmin() {
+  if (!isAdminLoggedIn()) {
+    adminLogin();
+    return false;
+  }
+  return true;
+}
 
 // ── Supabase config ─────────────────────────────────────────
 const SUPABASE_URL = "https://zwbwsiyvoqdpxyqiylfb.supabase.co";
@@ -23,7 +27,7 @@ const upsertHeaders = {
   "Prefer": "resolution=merge-duplicates,return=representation",
 };
 
-// ── Clés localStorage (uniquement pour contenu admin: machines, médias) ──
+// ── Clés localStorage ─
 export const STORAGE_KEY = "ditona_site_data_v3";
 export const SESSION_KEY = "ditona_admin_session";
 export const PASSWORD_KEY = "ditona_admin_password";
@@ -33,7 +37,7 @@ export function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-// ── Helpers Supabase REST ────────────────────────────────────
+// ── Helpers Supabase REST ───────────────────────────────────
 
 async function sbSelect(table, order = "created_at") {
   try {
@@ -189,7 +193,7 @@ async function sbDelete(table, id) {
   }
 }
 
-// ── Chargement données locales (machines, médias, services) ─
+// ── Chargement données locales ─
 
 function loadLocalData() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -206,7 +210,6 @@ function loadLocalData() {
       machines: parsed.machines?.length ? parsed.machines : clone(defaults.machines),
       realisations: parsed.realisations?.length ? parsed.realisations : clone(defaults.realisations),
       services: parsed.services?.length ? parsed.services : clone(defaults.services),
-      // Ces 4 collections viennent maintenant de Supabase
       messages: [],
       orders: [],
       appointments: [],
@@ -350,7 +353,7 @@ export async function refreshSiteContent() {
   return applyRemoteContent(remoteContent);
 }
 
-// ── saveData : synchronise le contenu admin vers Supabase ────
+// ── saveData ─────────────────────────────────────────────────
 export async function saveData() {
   const localOnly = localContentSnapshot();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(localOnly));
@@ -360,28 +363,25 @@ export async function saveData() {
   return true;
 }
 
-// ── API publique : ajouter une commande ──────────────────────
+// ── API publique : ajouter ───────────────────────────────────
 export async function addOrder(order) {
   const row = { ...order };
   data.orders.unshift(row);
   await sbInsert("orders", requestToSupabase(row));
 }
 
-// ── API publique : ajouter un message ───────────────────────
 export async function addMessage(message) {
   const row = { ...message };
   data.messages.unshift(row);
   await sbInsert("messages", requestToSupabase(row));
 }
 
-// ── API publique : ajouter un rendez-vous ───────────────────
 export async function addAppointment(appointment) {
   const row = { ...appointment };
   data.appointments.unshift(row);
   await sbInsert("appointments", requestToSupabase(row));
 }
 
-// ── API publique : ajouter une demande de formation ─────────
 export async function addTrainingRequest(request) {
   const row = { ...request };
   data.trainingRequests.unshift(row);
@@ -515,7 +515,65 @@ async function rememberCustomer(user, role) {
   });
 }
 
-// ── API admin : mettre à jour statut/réponse ─────────────────
+// ─ API publique : réinitialisation mot de passe ────────────
+export async function requestPasswordReset(email) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  if (!cleanEmail) throw new Error("E-mail requis.");
+  
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ 
+      email: cleanEmail,
+      redirectTo: `${location.origin}/reset-password`
+    }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.msg || error.error_description || "Envoi impossible. Verifiez l'e-mail.");
+  }
+  return true;
+}
+
+export async function resetPassword(newPassword, accessToken) {
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error("Le mot de passe doit contenir au moins 6 caracteres.");
+  }
+  
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: "PUT",
+    headers: {
+      ...headers,
+      "Authorization": `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ password: newPassword }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.msg || error.error_description || "Modification impossible.");
+  }
+  return true;
+}
+
+export async function exchangeCodeForSession(code) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=recovery`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ auth_code: code }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.msg || error.error_description || "Lien invalide ou expire.");
+  }
+  
+  const session = await res.json();
+  return session.access_token;
+}
+
+// ── API admin : mettre à jour ────────────────────────────────
 export async function updateOrder(id, updates) {
   const item = data.orders.find((o) => String(o.id) === String(id));
   if (item) Object.assign(item, appRequestFromSupabase(updates));

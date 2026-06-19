@@ -1,4 +1,4 @@
-import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer } from "./store.js";
+import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession } from "./store.js";
 import { machineCard, mediaTag, orderForm, publicShell, realisationCard, requestIdentityFields, serviceCard, setSlideTimer, visualTitle } from "./components.js";
 import { t, tr } from "./i18n.js";
 
@@ -150,7 +150,7 @@ export async function loginPage() {
           <label>Mot de passe<input name="password" type="password" required></label>
           <label class="check-line"><input type="checkbox" checked> Rester connecte</label>
           <button class="primary" type="submit">Se connecter</button>
-          <button class="ghost" type="button" data-link="/contact">Mot de passe oublie ?</button>
+          <button class="ghost" type="button" data-link="/forgot-password">Mot de passe oublie ?</button>
           <p class="form-message" data-login-message></p>
         </form>
         <div class="login-stack">
@@ -170,12 +170,169 @@ export async function loginPage() {
   bindCustomerAuth();
 }
 
+export function forgotPasswordPage() {
+  publicShell(`
+    <section class="section login-public">
+      <div class="section-head"><div><p class="eyebrow">Mot de passe oublie</p><h1>Recuperer l'acces</h1></div></div>
+      <form id="forgot-password-form" class="panel form-panel" style="max-width: 500px; margin: 0 auto;">
+        <p style="color: var(--muted); margin-bottom: 1.5rem;">Entrez votre adresse e-mail et nous vous enverrons un lien pour creer un nouveau mot de passe.</p>
+        <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
+        <button class="primary" type="submit">Envoyer le lien</button>
+        <button class="ghost" type="button" data-link="/login">Retour a la connexion</button>
+        <p class="form-message" data-forgot-message></p>
+      </form>
+    </section>
+  `, "/forgot-password");
+  
+  document.querySelector("#forgot-password-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = document.querySelector("[data-forgot-message]");
+    const button = event.target.querySelector('button[type="submit"]');
+    try {
+      button.disabled = true;
+      message.textContent = "";
+      message.className = "form-message";
+      const fd = new FormData(event.target);
+      await requestPasswordReset(fd.get("email"));
+      window.ditonaGo("/forgot-success");
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      message.textContent = err.message || "Erreur lors de l'envoi du lien.";
+      message.classList.add("error");
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+export function forgotSuccessPage() {
+  publicShell(`
+    <section class="section login-public">
+      <div class="section-head"><div><p class="eyebrow">Mot de passe oublie</p><h1>Lien envoye</h1></div></div>
+      <div class="panel form-panel" style="max-width: 500px; margin: 0 auto; text-align: center;">
+        <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 2.5rem; color: #16a34a; font-weight: 900;">✓</span>
+          </div>
+        </div>
+        <h2 style="color: #16a34a; margin-bottom: 1rem;">Lien envoye avec succes</h2>
+        <p style="color: var(--muted); margin-bottom: 2rem; line-height: 1.6;">
+          Un lien de reinitialisation de mot de passe a ete envoye a votre adresse e-mail. 
+          Verifiez votre boite de reception (et vos spams) et cliquez sur le lien pour creer un nouveau mot de passe.
+        </p>
+        <button class="primary" data-link="/login" style="width: 100%;">Retour a la connexion</button>
+      </div>
+    </section>
+  `, "/forgot-success");
+}
+
+export async function resetPasswordPage() {
+  const query = new URLSearchParams(location.search);
+  const code = query.get("code");
+  
+  if (!code) {
+    publicShell(`
+      <section class="section login-public">
+        <div class="section-head"><div><p class="eyebrow">Erreur</p><h1>Lien invalide</h1></div></div>
+        <div class="panel form-panel" style="max-width: 500px; margin: 0 auto; text-align: center;">
+          <p style="color: var(--muted); margin-bottom: 1.5rem;">Ce lien de reinitialisation est invalide ou a expire.</p>
+          <button class="primary" data-link="/forgot-password">Demander un nouveau lien</button>
+        </div>
+      </section>
+    `, "/reset-password");
+    return;
+  }
+  
+  let accessToken;
+  try {
+    accessToken = await exchangeCodeForSession(code);
+  } catch (err) {
+    publicShell(`
+      <section class="section login-public">
+        <div class="section-head"><div><p class="eyebrow">Erreur</p><h1>Lien invalide</h1></div></div>
+        <div class="panel form-panel" style="max-width: 500px; margin: 0 auto; text-align: center;">
+          <p style="color: var(--muted); margin-bottom: 1.5rem;">${err.message || "Ce lien est invalide ou a expire."}</p>
+          <button class="primary" data-link="/forgot-password">Demander un nouveau lien</button>
+        </div>
+      </section>
+    `, "/reset-password");
+    return;
+  }
+  
+  publicShell(`
+    <section class="section login-public">
+      <div class="section-head"><div><p class="eyebrow">Nouveau mot de passe</p><h1>Creer un nouveau mot de passe</h1></div></div>
+      <form id="reset-password-form" class="panel form-panel" style="max-width: 500px; margin: 0 auto;">
+        <p style="color: var(--muted); margin-bottom: 1.5rem;">Choisissez un nouveau mot de passe pour votre compte.</p>
+        <label>Nouveau mot de passe<input name="password" type="password" required minlength="6" placeholder="Minimum 6 caracteres"></label>
+        <label>Confirmer le mot de passe<input name="confirm" type="password" required minlength="6"></label>
+        <button class="primary" type="submit">Mettre a jour le mot de passe</button>
+        <p class="form-message" data-reset-message></p>
+      </form>
+    </section>
+  `, "/reset-password");
+  
+  document.querySelector("#reset-password-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = document.querySelector("[data-reset-message]");
+    const button = event.target.querySelector('button[type="submit"]');
+    try {
+      button.disabled = true;
+      message.textContent = "";
+      message.className = "form-message";
+      const fd = new FormData(event.target);
+      const password = fd.get("password");
+      const confirm = fd.get("confirm");
+      
+      if (password !== confirm) {
+        throw new Error("Les mots de passe ne correspondent pas.");
+      }
+      
+      await resetPassword(password, accessToken);
+      message.innerHTML = `<span class="success-badge">Mot de passe modifie avec succes</span>`;
+      message.classList.add("success");
+      
+      setTimeout(() => {
+        window.ditonaGo("/login");
+      }, 2000);
+    } catch (err) {
+      console.error("Reset password error:", err);
+      message.textContent = err.message || "Erreur lors de la modification.";
+      message.classList.add("error");
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+export function signupSuccessPage() {
+  publicShell(`
+    <section class="section login-public">
+      <div class="section-head"><div><p class="eyebrow">Inscription</p><h1>Compte cree avec succes</h1></div></div>
+      <div class="panel form-panel" style="max-width: 500px; margin: 0 auto; text-align: center;">
+        <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 2.5rem; color: #16a34a; font-weight: 900;">✓</span>
+          </div>
+        </div>
+        <h2 style="color: #16a34a; margin-bottom: 1rem;">Compte cree avec succes</h2>
+        <p style="color: var(--muted); margin-bottom: 2rem; line-height: 1.6;">
+          Votre compte a ete cree avec succes. Un e-mail de confirmation vous a ete envoye. 
+          Verifiez votre boite de reception et cliquez sur le lien pour activer votre compte.
+        </p>
+        <button class="primary" data-link="/login" style="width: 100%;">Aller a la connexion</button>
+      </div>
+    </section>
+  `, "/signup-success");
+}
+
 function bindCustomerAuth() {
   document.querySelector("[data-customer-logout]")?.addEventListener("click", async () => {
     logoutCustomer();
     await loginPage();
     window.ditonaBindGlobal?.();
   });
+  
   document.querySelector("#customer-login-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const message = document.querySelector("[data-login-message]");
@@ -183,16 +340,20 @@ function bindCustomerAuth() {
     try {
       button.disabled = true;
       message.textContent = "";
+      message.className = "form-message";
       const fd = new FormData(event.target);
       await loginCustomer(fd.get("email"), fd.get("password"));
       await loginPage();
       window.ditonaBindGlobal?.();
     } catch (err) {
-      message.textContent = err.message;
+      console.error("Login error:", err);
+      message.textContent = err.message || "Erreur de connexion. Verifiez vos identifiants.";
+      message.classList.add("error");
     } finally {
       button.disabled = false;
     }
   });
+  
   document.querySelector("#buyer-signup-form")?.addEventListener("submit", (event) => signupFromForm(event, "acheteur", "[data-buyer-message]"));
 }
 
@@ -203,12 +364,14 @@ async function signupFromForm(event, role, messageSelector) {
   try {
     button.disabled = true;
     message.textContent = "";
+    message.className = "form-message";
     const fd = new FormData(event.target);
     await signupCustomer(fd.get("email"), fd.get("password"), role, fd.get("confirm"));
-    await loginPage();
-    window.ditonaBindGlobal?.();
+    window.ditonaGo("/signup-success");
   } catch (err) {
-    message.textContent = err.message;
+    console.error("Signup error:", err);
+    message.textContent = err.message || "Inscription impossible. Essayez un autre e-mail.";
+    message.classList.add("error");
   } finally {
     button.disabled = false;
   }
@@ -247,10 +410,9 @@ export function contactPage(subject = "") {
       </form>
       <aside class="panel contact-card">
         <p><strong>Ingenieur DITONA</strong></p>
-       <p>Email: <a href="mailto:ditonatg@gmail.com">ditonatg@gmail.com</a></p>
-
-  <p>WhatsApp: <a href="https://wa.me/22870021225" target="_blank">+228 70 02 12 25</a></p>
-</aside>
+        <p>Email: <a href="mailto:ditonatg@gmail.com">ditonatg@gmail.com</a></p>
+        <p>WhatsApp: <a href="https://wa.me/22870021225" target="_blank">+228 70 02 12 25</a></p>
+      </aside>
     </section>
   `, "/contact");
   document.querySelector("#contact-form").addEventListener("submit", async (event) => {

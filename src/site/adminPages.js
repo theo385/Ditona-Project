@@ -1,4 +1,4 @@
-import { adminItem, clearTimers, dashboardActivity, logo, messageConversation, requestConversation } from "./components.js";
+import { adminItem, clearTimers, dashboardActivity, logo, messageConversation, requestConversation, requestConversationSimple } from "./components.js";
 import { countNew } from "./format.js";
 import { data, getAdminPassword, isAdminLoggedIn, loginAdmin, logoutAdmin, saveData, setAdminPassword, today, updateOrder, updateMessage, updateAppointment, updateTrainingRequest, deleteOrder, deleteMessage, deleteAppointment, deleteTrainingRequest, loadRemoteData, uploadMediaFile } from "./store.js";
 
@@ -248,33 +248,36 @@ export function adminServices() {
   bindServiceForm();
 }
 
+// MODIFIÉ - SANS ZONE DE RÉPONSE ADMIN
 export function adminFormations() {
   if (!requireAdmin()) return;
   markSeen("trainingRequests");
   const list = (data.trainingRequests || []).map((f) => ({ ...f, client: `${f.name || ""} ${f.firstname || ""}`.trim(), note: f.message }));
   adminShell(`
     <div class="admin-head"><p class="eyebrow">Demandes</p><h1>Formations</h1></div>
-    ${requestConversation(list, "formation")}
+    ${requestConversationSimple(list, "formation")}
   `, "formations");
   injectDeleteButtons("formation");
 }
 
+// MODIFIÉ - SANS ZONE DE RÉPONSE ADMIN
 export function adminAppointments() {
   if (!requireAdmin()) return;
   markSeen("appointments");
   adminShell(`
     <div class="admin-head"><p class="eyebrow">Planning</p><h1>Rendez-vous</h1></div>
-    ${requestConversation(data.appointments, "appointment")}
+    ${requestConversationSimple(data.appointments, "appointment")}
   `, "appointments");
   injectDeleteButtons("appointment");
 }
 
+// MODIFIÉ - SANS ZONE DE RÉPONSE ADMIN
 export function adminOrders() {
   if (!requireAdmin()) return;
   markSeen("orders");
   adminShell(`
     <div class="admin-head"><p class="eyebrow">Demandes</p><h1>Achats</h1></div>
-    ${requestConversation(data.orders, "order")}
+    ${requestConversationSimple(data.orders, "order")}
   `, "orders");
   injectDeleteButtons("order");
 }
@@ -310,6 +313,7 @@ export function adminAccounts() {
   `, "accounts");
 }
 
+// MODIFIÉ - AFFICHAGE DES ERREURS EN BAS DU FORMULAIRE
 export function adminSettings() {
   if (!requireAdmin()) return;
   adminShell(`
@@ -319,22 +323,42 @@ export function adminSettings() {
       <label>Nouveau mot de passe<input name="next" type="password" required minlength="6"></label>
       <label>Confirmer<input name="confirm" type="password" required minlength="6"></label>
       <button class="primary">Mettre a jour</button>
+      <p class="form-message" data-password-message></p>
     </form>
   `, "settings");
   document.querySelector("#password-form").addEventListener("submit", (event) => {
     event.preventDefault();
+    const message = document.querySelector("[data-password-message]");
     const fd = new FormData(event.target);
-    if (fd.get("current") !== getAdminPassword()) return alert("Mot de passe actuel incorrect.");
-    if (fd.get("next") !== fd.get("confirm")) return alert("Les nouveaux mots de passe ne correspondent pas.");
+    
+    message.textContent = "";
+    message.className = "form-message";
+    
+    if (fd.get("current") !== getAdminPassword()) {
+      message.textContent = "Mot de passe actuel incorrect.";
+      message.classList.add("error");
+      return;
+    }
+    if (fd.get("next") !== fd.get("confirm")) {
+      message.textContent = "Les nouveaux mots de passe ne correspondent pas.";
+      message.classList.add("error");
+      return;
+    }
     setAdminPassword(fd.get("next"));
-    event.target.innerHTML = `<div class="success"><h2>Mot de passe modifie</h2><p>Utilisez le nouveau mot de passe a la prochaine connexion.</p></div>`;
+    message.textContent = "Mot de passe modifie avec succes.";
+    message.classList.add("success");
+    event.target.reset();
   });
 }
 
+// MODIFIÉ - Synchronisation forcée après upload
 async function readImage(input, fallback, folder = "admin") {
   const file = input.files?.[0];
   if (!file) return fallback || "";
-  return uploadMediaFile(file, folder);
+  const imageUrl = await uploadMediaFile(file, folder);
+  // Forcer la synchronisation après upload
+  await saveData();
+  return imageUrl;
 }
 
 async function persistAdminData(reload) {
@@ -470,14 +494,12 @@ function injectDeleteButtons(type) {
       deleteRequest(type, id);
     }
   });
-  // Trouver les IDs via les textareas de reponse (data-{type}-reply="{id}")
   main.querySelectorAll(`[data-${type}-reply]`).forEach((textarea) => {
     const id = textarea.dataset[`${type}Reply`] || textarea.getAttribute(`data-${type}-reply`);
     if (!id) return;
-    // Trouver le conteneur parent (request-card ou thread-head ou thread-actions)
     const actions = textarea.closest(".request-card, .message-thread")?.querySelector(".thread-actions, .request-top");
     if (!actions) return;
-    if (actions.querySelector("[data-delete-req]")) return; // Eviter doublon
+    if (actions.querySelector("[data-delete-req]")) return;
     const del = document.createElement("button");
     del.className = "danger small";
     del.dataset.deleteReq = id;
@@ -503,9 +525,7 @@ export async function saveRequest(type, id) {
     status: reply ? "Repondu" : "Vu",
     reply,
   };
-  // Mise à jour locale
   data[key] = data[key].map((item) => String(item.id) === String(id) ? { ...item, seenAt: updates.seen_at, status: updates.status, reply } : item);
-  // Synchronisation Supabase
   if (type === "order") await updateOrder(id, updates);
   else if (type === "appointment") await updateAppointment(id, updates);
   else if (type === "formation") await updateTrainingRequest(id, updates);
@@ -519,7 +539,6 @@ export async function saveRequest(type, id) {
 export async function deleteRequest(type, id) {
   const key = type === "order" ? "orders" : type === "appointment" ? "appointments" : type === "formation" ? "trainingRequests" : "messages";
   data[key] = (data[key] || []).filter((item) => String(item.id) !== String(id));
-  // Suppression Supabase
   if (type === "order") await deleteOrder(id);
   else if (type === "appointment") await deleteAppointment(id);
   else if (type === "formation") await deleteTrainingRequest(id);

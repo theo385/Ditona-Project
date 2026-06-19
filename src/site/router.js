@@ -34,6 +34,10 @@ import {
   orderMachine,
   realisationsPage,
   servicesPage,
+  forgotPasswordPage,
+  forgotSuccessPage,
+  resetPasswordPage,
+  signupSuccessPage,
 } from "./publicPages.js";
 
 export function go(path) {
@@ -156,21 +160,23 @@ function setAdminMode(enabled) {
 
 export function render() {
   const path = location.pathname;
-  if (path === "/machines") return refreshSiteContent().then(() => { machinesPage(); bindGlobal(); });
-  if (path === "/realisations") return refreshSiteContent().then(() => { realisationsPage(); bindGlobal(); });
-  if (path === "/services") return refreshSiteContent().then(() => { servicesPage(); bindGlobal(); });
-  if (path === "/formation") return formationPage(), bindGlobal();
-  if (path === "/about") return aboutPage(), bindGlobal();
-  if (path === "/rendez-vous") return appointmentPage(), bindGlobal();
-  if (path === "/contact") return contactPage(), bindGlobal();
+  if (path === "/machines") return loadRemoteData().then(() => refreshSiteContent()).then(() => { machinesPage(); bindGlobal(); });
+  if (path === "/realisations") return loadRemoteData().then(() => refreshSiteContent()).then(() => { realisationsPage(); bindGlobal(); });
+  if (path === "/services") return loadRemoteData().then(() => refreshSiteContent()).then(() => { servicesPage(); bindGlobal(); });
+  if (path === "/formation") return loadRemoteData().then(() => { formationPage(); bindGlobal(); });
+  if (path === "/about") return loadRemoteData().then(() => { aboutPage(); bindGlobal(); });
+  if (path === "/rendez-vous") return loadRemoteData().then(() => { appointmentPage(); bindGlobal(); });
+  if (path === "/contact") return loadRemoteData().then(() => { contactPage(); bindGlobal(); });
+  if (path === "/forgot-password") return loadRemoteData().then(() => { forgotPasswordPage(); bindGlobal(); });
+  if (path === "/forgot-success") return loadRemoteData().then(() => { forgotSuccessPage(); bindGlobal(); });
+  if (path === "/signup-success") return loadRemoteData().then(() => { signupSuccessPage(); bindGlobal(); });
+  if (path === "/reset-password") return loadRemoteData().then(() => resetPasswordPage().then(bindGlobal));
   if (path === "/login") {
-    loginPage().then(bindGlobal);
-    return;
+    return loadRemoteData().then(() => loginPage().then(bindGlobal));
   }
   if (path.startsWith("/admin")) {
     setAdminMode(true);
-    // Rafraîchir les données Supabase à chaque navigation admin
-    refreshAdminData().then(() => {
+    return refreshAdminData().then(() => {
       if (path === "/admin/home") return adminHome();
       if (path === "/admin/sections") return adminSections();
       if (path === "/admin/machines") return adminMachines();
@@ -184,10 +190,9 @@ export function render() {
       if (path === "/admin/settings") return adminSettings();
       adminDashboard();
     });
-    return;
   }
   setAdminMode(false);
-  refreshSiteContent().then(() => { homePage(); bindGlobal(); });
+  return loadRemoteData().then(() => refreshSiteContent()).then(() => { homePage(); bindGlobal(); });
 }
 
 export async function startApp() {
@@ -209,7 +214,6 @@ export async function startApp() {
       }
     });
   });
-  // Charger les données Supabase avant le premier rendu
   await loadRemoteData();
   render();
 }

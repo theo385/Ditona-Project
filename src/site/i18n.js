@@ -50,7 +50,7 @@ const dictionaries = {
     "action.search": "Search",
     "action.login": "Sign in",
     "search.placeholder": "Search by product, service...",
-    "footer.about": "DITONA  ENGINEERING. Industrial machines, maintenance, automation, training and technical support.",
+    "footer.about": "DITONA ENGINEERING. Industrial machines, maintenance, automation, training and technical support.",
     "footer.support": "Service and support",
     "footer.help": "FAQ/Help",
     "footer.purchase": "Purchase contract template",
@@ -226,6 +226,7 @@ const textTranslations = {
     "Mot de passe": "Password",
     "Rester connecte": "Stay signed in",
     "Numero client ou mot de passe oublie ?": "Forgot customer number or password?",
+    "Mot de passe oublie ?": "Forgot password?",
     "S'inscrire": "Register",
     "Contacter DITONA": "Contact DITONA",
     "Niveau actuel": "Current level",
@@ -238,6 +239,7 @@ const textTranslations = {
     "Fermer": "Close",
     "Commande": "Order",
     "Quantite, ville, precision technique...": "Quantity, city, technical details...",
+    "Precision sur le besoin": "Details about your needs",
     "Demande de formation envoyee": "Training request sent",
     "L'administration peut maintenant vous recontacter.": "The administration can now contact you.",
     "Retour accueil": "Back home",
@@ -256,7 +258,7 @@ const textTranslations = {
     "Concevoir, fournir, installer et maintenir des machines industrielles adaptees au terrain.": "Design, supply, install and maintain industrial machines adapted to real field conditions.",
     "Analyse du besoin, proposition technique, fabrication ou sourcing, installation, formation et suivi apres-vente.": "Needs analysis, technical proposal, manufacturing or sourcing, installation, training and after-sales follow-up.",
     "Ingenieur DITONA": "DITONA Engineering",
-    "DITONA  ENGINEERING developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.": "DITONA Engineering develops technical solutions to produce, maintain and improve industrial equipment.",
+    "DITONA ENGINEERING developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.": "DITONA Engineering develops technical solutions to produce, maintain and improve industrial equipment.",
     "Rencontrer l'ingenieur DITONA": "Meet DITONA Engineering",
     "Planifiez un echange pour un achat, un projet, une maintenance ou une formation.": "Schedule a discussion for a purchase, project, maintenance or training.",
     "Ligne de remplissage automatique": "Automatic filling line",
@@ -269,6 +271,12 @@ const textTranslations = {
     "Machine speciale avec capteurs, controle et instrumentation.": "Special machine with sensors, control and instrumentation.",
     "Projet realise selon cahier des charges.": "Project carried out according to specifications.",
     "Machine CNC compacte pour gravure, decoupe et prototypage industriel.": "Compact CNC machine for engraving, cutting and industrial prototyping.",
+    "Se deconnecter": "Sign out",
+    "Voir les machines": "View machines",
+    "Votre compte client est actif.": "Your customer account is active.",
+    "Connecte": "Signed in",
+    "Mon compte": "My account",
+    "Client": "Client",
   },
   pt: {
     "Fabrication de machines industrielles": "Fabricacao de maquinas industriais",
@@ -348,7 +356,9 @@ const textTranslations = {
     "Mot de passe": "Senha",
     "Rester connecte": "Manter sessao",
     "Numero client ou mot de passe oublie ?": "Esqueceu numero de cliente ou senha?",
+    "Mot de passe oublie ?": "Esqueceu a senha?",
     "S'inscrire ": "Registar",
+    "S'inscrire": "Registar",
     "Contacter DITONA": "Contactar DITONA",
     "Niveau actuel": "Nivel atual",
     "Date souhaitee": "Data desejada",
@@ -360,6 +370,7 @@ const textTranslations = {
     "Fermer": "Fechar",
     "Commande": "Encomenda",
     "Quantite, ville, precision technique...": "Quantidade, cidade, detalhes tecnicos...",
+    "Precision sur le besoin": "Detalhes sobre as necessidades",
     "Demande de formation envoyee": "Pedido de formacao enviado",
     "L'administration peut maintenant vous recontacter.": "A administracao pode agora contactar voce.",
     "Retour accueil": "Voltar ao inicio",
@@ -378,7 +389,7 @@ const textTranslations = {
     "Concevoir, fournir, installer et maintenir des machines industrielles adaptees au terrain.": "Conceber, fornecer, instalar e manter maquinas industriais adaptadas ao terreno.",
     "Analyse du besoin, proposition technique, fabrication ou sourcing, installation, formation et suivi apres-venda.": "Analise da necessidade, proposta tecnica, fabricacao ou sourcing, instalacao, formacao e acompanhamento pos-venda.",
     "Ingenieur DITONA": "DITONA Engineering",
-    "DITONA  ENGINEERING developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.": "A DITONA Engineering desenvolve solucoes tecnicas para produzir, manter e melhorar equipamentos industriais.",
+    "DITONA ENGINEERING developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.": "A DITONA Engineering desenvolve solucoes tecnicas para produzir, manter e melhorar equipamentos industriais.",
     "Rencontrer l'ingenieur DITONA": "Encontrar a DITONA Engineering",
     "Planifiez un echange pour un achat, un projet, une maintenance ou une formation.": "Agende uma conversa para compra, projeto, manutencao ou formacao.",
     "Ligne de remplissage automatique": "Linha de enchimento automatica",
@@ -391,16 +402,25 @@ const textTranslations = {
     "Machine speciale avec capteurs, controle et instrumentation.": "Maquina especial com sensores, controlo e instrumentacao.",
     "Projet realise selon cahier des charges.": "Projeto realizado segundo o caderno de encargos.",
     "Machine CNC compacte pour gravure, decoupe et prototypage industriel.": "Maquina CNC compacta para gravacao, corte e prototipagem industrial.",
+    "Se deconnecter": "Sair",
+    "Voir les machines": "Ver maquinas",
+    "Votre compte client est actif.": "A sua conta cliente esta ativa.",
+    "Connecte": "Conectado",
+    "Mon compte": "Minha conta",
+    "Client": "Cliente",
   },
   zh: {
     "Fabrication de machines industrielles": "工业机器制造",
     "Conception, montage et mise au point d'equipements sur mesure": "定制设备的设计、装配和调试。",
     "Maintenance et remise en service": "维护与重新投产",
     "Diagnostic terrain, depannage et suivi technique": "现场诊断、维修和技术跟进。",
+    "Diagnostic terrain, depannage et suivi technique.": "现场诊断、维修和技术跟进。",
     "Formation en fabrication de machines": "机器制造培训",
     "Accompagnement des techniciens et operateurs": "为技术人员和操作员提供支持。",
+    "Accompagnement des techniciens et operateurs.": "为技术人员和操作员提供支持。",
     "Prototypes et automatisation": "原型与自动化",
     "Solutions speciales pour laboratoire, atelier et production": "面向实验室、车间和生产的专用解决方案。",
+    "Solutions speciales pour laboratoire, atelier et production.": "面向实验室、车间和生产的专用解决方案。",
     "Interventions electriques": "电气现场服务",
     "Controle, cablage et securisation des installations.": "控制、布线和设备安全检查。",
     "Chantiers techniques": "技术项目",
@@ -427,9 +447,12 @@ const textTranslations = {
     "SAV, accompagnement, vente, formation, maintenance et automatisation.": "售后、支持、销售、培训、维护和自动化。",
     "Formation technique DITONA": "DITONA 技术培训",
     "Dites ce que vous voulez apprendre et l'equipe vous proposera un programme adapte.": "告诉我们您的学习需求，团队会提出合适方案。",
+    "DITONA Engineering": "DITONA Engineering",
+    "DITONA Engineering developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.": "DITONA Engineering 开发用于生产、维护和改进工业设备的技术方案。",
+    "DITONA ENGINEERING developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.": "DITONA Engineering 开发用于生产、维护和改进工业设备的技术方案。",
     "Ingenieur DITONA": "DITONA Engineering",
-    "DITONA  ENGINEERING developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.": "DITONA Engineering 开发用于生产、维护和改进工业设备的技术方案。",
     "Rencontrer l'ingenieur DITONA": "预约 DITONA Engineering",
+    "Rencontrer DITONA Engineering": "预约 DITONA Engineering",
     "Planifiez un echange pour un achat, un projet, une maintenance ou une formation.": "为采购、项目、维护或培训安排沟通。",
     "Envoyer une demande": "发送请求",
     "Demande de devis, information machine, SAV ou formation": "报价、机器信息、售后或培训请求。",
@@ -454,7 +477,16 @@ const textTranslations = {
     "Sujet": "主题",
     "Message": "消息",
     "Objectif": "目标",
+    "Ce que vous voulez apprendre": "学习内容",
     "Niveau actuel": "当前水平",
+    "Debutant": "初学者",
+    "Intermediaire": "中级",
+    "Avance": "高级",
+    "Entreprise / equipe": "公司/团队",
+    "Projet machine": "机器项目",
+    "Maintenance": "维护",
+    "Accompagnement": "支持",
+    "Autre": "其他",
     "Date souhaitee": "期望日期",
     "Objet": "主题",
     "Envoyer le message": "发送消息",
@@ -470,6 +502,41 @@ const textTranslations = {
     "Contact direct": "直接联系",
     "Concevoir, fournir, installer et maintenir des machines industrielles adaptees au terrain.": "设计、供应、安装和维护适合现场条件的工业机器。",
     "Analyse du besoin, proposition technique, fabrication ou sourcing, installation, formation et suivi apres-vente.": "需求分析、技术方案、制造或采购、安装、培训和售后跟进。",
+    "Compte client": "客户账户",
+    "Connexion utilisateur": "用户登录",
+    "Se connecter": "登录",
+    "Mot de passe": "密码",
+    "Rester connecte": "保持登录",
+    "Mot de passe oublie ?": "忘记密码？",
+    "S'inscrire": "注册",
+    "Se deconnecter": "退出登录",
+    "Voir les machines": "查看机器",
+    "Votre compte client est actif.": "您的客户账户已激活。",
+    "Connecte": "已登录",
+    "Mon compte": "我的账户",
+    "Client": "客户",
+    "Precision sur le besoin": "需求详情",
+    "Quantite, ville, precision technique...": "数量、城市、技术细节...",
+    "Commande": "订单",
+    "Demande de formation envoyee": "培训请求已发送",
+    "L'administration peut maintenant vous recontacter.": "管理员现在可以联系您。",
+    "Retour accueil": "返回首页",
+    "Rendez-vous envoye": "预约已发送",
+    "La demande est enregistree.": "请求已保存。",
+    "Message envoye": "消息已发送",
+    "Votre demande est enregistree.": "您的请求已保存。",
+    "Commande envoyee": "订单已发送",
+    "L'administration a recu votre demande et peut vous contacter.": "管理员已收到您的请求，可以联系您。",
+    "Ligne de remplissage automatique": "自动灌装线",
+    "Ligne de convoyage, dosage et remplissage pour production agro-industrielle.": "用于农工业生产的输送、计量和灌装线。",
+    "Conception 3D, fabrication, installation et mise en service.": "3D 设计、制造、安装和调试。",
+    "Groupe hydraulique chantier": "工地液压单元",
+    "Diagnostic, entretien et remise en service d'equipements hydrauliques.": "液压设备的诊断、维护和重新投产。",
+    "Intervention terrain avec controle securite.": "带安全检查的现场干预。",
+    "Prototype laboratoire automatise": "自动化实验室原型",
+    "Machine speciale avec capteurs, controle et instrumentation.": "带传感器、控制和仪器的专用机器。",
+    "Projet realise selon cahier des charges.": "按规格书完成的项目。",
+    "Machine CNC compacte pour gravure, decoupe et prototypage industriel.": "用于雕刻、切割和工业原型制作的紧凑型 CNC 机器。",
   },
 };
 
@@ -488,6 +555,7 @@ export function t(key) {
 }
 
 export function tr(text) {
+  if (!text) return text;
   const lang = currentLanguage();
   if (lang === "fr") return cleanDisplayText(text);
   return cleanDisplayText(textTranslations[lang]?.[text] || text);
@@ -501,7 +569,7 @@ function cleanDisplayText(value) {
 export function translateDom(root = document) {
   const lang = currentLanguage();
 
-  // --- Placeholders: stocker le texte FR original pour pouvoir re-traduire ---
+  // --- Placeholders ---
   root.querySelectorAll("input[placeholder], textarea[placeholder]").forEach((field) => {
     const orig = field.dataset.origPlaceholder || field.placeholder;
     if (!field.dataset.origPlaceholder) field.dataset.origPlaceholder = orig;
@@ -523,7 +591,7 @@ export function translateDom(root = document) {
     const trimmed = current.trim();
     const parent = node.parentElement;
     if (!parent) return;
-    // Mémoriser le texte français original sur le premier passage
+    /
     if (!parent.dataset.origText) parent.dataset.origText = trimmed;
     const frSource = parent.dataset.origText;
     if (lang === "fr") {

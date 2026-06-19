@@ -46,6 +46,11 @@ export function visualTitle(key, eyebrow) {
 
 export function publicShell(content, active = "") {
   clearTimers();
+  const session = currentCustomer();
+  const user = session?.user;
+  const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "Client";
+  const displayName = userName.split(" ")[0];
+  
   document.querySelector("#app").innerHTML = `
     <header class="site-header">
       <div class="site-header-row1">
@@ -60,10 +65,20 @@ export function publicShell(content, active = "") {
             <option value="en" ${currentLanguage() === "en" ? "selected" : ""}>English</option>
             <option value="pt" ${currentLanguage() === "pt" ? "selected" : ""}>Portugues</option>
             <option value="zh" ${currentLanguage() === "zh" ? "selected" : ""}>中文</option>
-</select>
+          </select>
         </label>
         <button class="primary header-cta" data-link="/machines">${t("action.order")}</button>
-        <button class="header-action login-action" data-link="/login" title="${t("action.login")}"><span class="user-icon"></span><small>${t("action.login")}</small></button>
+        ${user ? `
+          <button class="header-action user-connected" data-link="/login" title="Mon compte">
+            <span class="user-icon"></span>
+            <small>${escapeHtml(displayName)}</small>
+          </button>
+        ` : `
+          <button class="header-action login-action" data-link="/login" title="${t("action.login")}">
+            <span class="user-icon"></span>
+            <small>${t("action.login")}</small>
+          </button>
+        `}
       </div>
       <div class="site-header-row2">
         <nav class="site-nav" id="main-nav">
@@ -94,7 +109,11 @@ export function publicShell(content, active = "") {
         ${navButton(t("nav.appointment"), "/rendez-vous", active)}
         ${navButton(t("nav.contact"), "/contact", active)}
         <div class="mobile-nav-spacer"></div>
-        <button class="mobile-login-link" data-link="/login">${t("action.login")}</button>
+        ${user ? `
+          <button class="mobile-login-link" data-link="/login">${escapeHtml(displayName)}</button>
+        ` : `
+          <button class="mobile-login-link" data-link="/login">${t("action.login")}</button>
+        `}
       </div>
     </div>
     <main>${content}</main>
@@ -132,7 +151,6 @@ export function publicShell(content, active = "") {
       <a href="https://wa.me/22870021225" target="_blank" rel="noopener">WhatsApp +228 70 02 12 25</a>
     </div>
   `;
-  // Hamburger menu logic — setTimeout garantit que le DOM est prêt (fix Safari iOS)
   setTimeout(() => {
     const hamburger = document.querySelector("#hamburger-btn");
     const overlay = document.querySelector("#mobile-nav-overlay");
@@ -175,7 +193,6 @@ export function requestIdentityFields() {
     <input name="firstname" type="hidden" value="${escapeHtml(customer.firstname)}">
     <input name="email" type="hidden" value="${escapeHtml(customer.email)}">
     <input name="phone" type="hidden" value="${escapeHtml(customer.phone)}">
-    <p class="connected-note">Demande envoyee avec le compte ${escapeHtml(customer.email || customer.name)}</p>
   `;
 }
 
@@ -367,6 +384,63 @@ export function requestThread(item, type) {
     <div class="thread-actions">
       <button class="primary" data-save-${type}="${id}">Envoyer / enregistrer</button>
       <button class="danger" data-delete-request="${id}" data-delete-request-type="${type}">Supprimer</button>
+    </div>
+  `;
+}
+
+export function requestConversationSimple(items = [], type) {
+  if (!items.length) return `<p class="empty">Aucune demande.</p>`;
+  const active = items[0];
+  const rows = items.map((item, index) => {
+    const title = item.subject || item.machine || item.training || "Demande";
+    const client = item.client || `${item.name || ""} ${item.firstname || ""}`.trim() || "Client web";
+    const contact = [item.phone, item.email].filter(Boolean).join(" | ");
+    return `
+      <button class="message-user ${index === 0 ? "active" : ""}" data-request-select="${type}:${item.id}">
+        <strong>${escapeHtml(title)}</strong>
+        <span>${escapeHtml(client)}</span>
+        <small>${escapeHtml(contact)}</small>
+      </button>
+    `;
+  }).join("");
+  return `
+    <section class="message-desk request-desk">
+      <aside class="message-list">${rows}</aside>
+      <article class="message-thread" data-request-thread>${requestThreadSimple(active, type)}</article>
+    </section>
+  `;
+}
+
+export function requestThreadSimple(item, type) {
+  if (!item) return `<p class="empty">Selectionnez une demande.</p>`;
+  const id = item.id;
+  const title = item.subject || item.machine || item.training || "Demande";
+  const client = item.client || `${item.name || ""} ${item.firstname || ""}`.trim() || "Client web";
+  const contact = [item.phone, item.email].filter(Boolean).join(" | ");
+  const details = [
+    item.machine ? `Commande: ${item.machine}` : "",
+    item.price ? `Montant: ${money(item.price)}` : "",
+    item.date ? `Date souhaitee: ${item.date}` : "",
+    item.level ? `Niveau: ${item.level}` : "",
+    item.training ? `Formation: ${item.training}` : "",
+  ].filter(Boolean);
+  
+  return `
+    <div class="thread-head">
+      <div>
+        <h2>${escapeHtml(title)}</h2>
+        <p><strong>${escapeHtml(client)}</strong>${contact ? ` | ${escapeHtml(contact)}` : ""}</p>
+      </div>
+      <small>${escapeHtml(item.createdAt || "")}</small>
+    </div>
+    <div class="thread-chat">
+      ${details.length ? `<div class="request-meta">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("")}</div>` : ""}
+      <p class="bubble client">${escapeHtml(item.message || item.note || "Demande creee depuis le site.")}</p>
+    </div>
+    <div class="thread-actions">
+      ${item.email ? `<a class="primary" href="mailto:${escapeHtml(item.email)}">Contacter par email</a>` : ""}
+      ${item.phone ? `<a class="ghost" href="https://wa.me/${escapeHtml(String(item.phone).replace(/\D/g, ""))}" target="_blank" rel="noopener">Contacter WhatsApp</a>` : ""}
+      <button class="danger" data-delete-request="${escapeHtml(item.id)}" data-delete-request-type="${type}">Supprimer</button>
     </div>
   `;
 }
