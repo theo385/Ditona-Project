@@ -32,6 +32,7 @@ export const STORAGE_KEY = "ditona_site_data_v3";
 export const SESSION_KEY = "ditona_admin_session";
 export const PASSWORD_KEY = "ditona_admin_password";
 export const CUSTOMER_SESSION_KEY = "ditona_customer_session";
+export const GUEST_STARTED_KEY = "ditona_guest_started_at";
 
 export function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -209,6 +210,8 @@ function loadLocalData() {
       sectionMedia: { ...clone(defaults.sectionMedia), ...(parsed.sectionMedia || {}) },
       machines: parsed.machines?.length ? parsed.machines : clone(defaults.machines),
       realisations: parsed.realisations?.length ? parsed.realisations : clone(defaults.realisations),
+      maintenanceServices: parsed.maintenanceServices?.length ? parsed.maintenanceServices : clone(defaults.maintenanceServices),
+      formations: parsed.formations?.length ? parsed.formations : clone(defaults.formations),
       services: parsed.services?.length ? parsed.services : clone(defaults.services),
       messages: [],
       orders: [],
@@ -258,7 +261,10 @@ function normalizeData(next) {
     homeProof: normalizeCollection(next.homeProof, fallback.homeProof),
     machines: normalizeCollection(next.machines, fallback.machines),
     realisations: normalizeCollection(next.realisations, fallback.realisations),
+    maintenanceServices: normalizeCollection(next.maintenanceServices || fallback.maintenanceServices, fallback.maintenanceServices),
+    formations: normalizeCollection(next.formations || fallback.formations, fallback.formations),
     services: normalizeCollection(next.services, fallback.services),
+    maintenanceRequests: next.maintenanceRequests || [],
   };
 }
 
@@ -301,6 +307,8 @@ function localContentSnapshot() {
     sectionMedia: data.sectionMedia,
     machines: data.machines,
     realisations: data.realisations,
+    maintenanceServices: data.maintenanceServices,
+    formations: data.formations,
     services: data.services,
     messages: [],
     orders: [],
@@ -332,11 +340,12 @@ function applyRemoteContent(remoteContent) {
 
 // ── Charger les données Supabase au démarrage ────────────────
 export async function loadRemoteData() {
-  const [orders, messages, appointments, trainingRequests, accounts, remoteContent] = await Promise.all([
+  const [orders, messages, appointments, trainingRequests, maintenanceRequests, accounts, remoteContent] = await Promise.all([
     sbSelect("orders"),
     sbSelect("messages"),
     sbSelect("appointments"),
     sbSelect("training_requests"),
+    sbSelect("maintenance_requests"),
     sbSelect("customer_accounts", "last_login_at"),
     sbSelectContent(),
   ]);
@@ -345,6 +354,7 @@ export async function loadRemoteData() {
   data.messages = messages.map(appRequestFromSupabase);
   data.appointments = appointments.map(appRequestFromSupabase);
   data.trainingRequests = trainingRequests.map(appRequestFromSupabase);
+  data.maintenanceRequests = maintenanceRequests.map(appRequestFromSupabase);
   data.customerAccounts = accounts;
 }
 
@@ -386,6 +396,14 @@ export async function addTrainingRequest(request) {
   const row = { ...request };
   data.trainingRequests.unshift(row);
   await sbInsert("training_requests", requestToSupabase(row));
+}
+
+export async function addMaintenanceRequest(request) {
+  const row = { ...request };
+  data.maintenanceRequests = data.maintenanceRequests || [];
+  data.maintenanceRequests.unshift(row);
+  const saved = await sbInsert("maintenance_requests", requestToSupabase(row));
+  if (!saved) localStorage.setItem(STORAGE_KEY, JSON.stringify(localContentSnapshot()));
 }
 
 async function authErrorMessage(res, fallback) {
@@ -617,6 +635,11 @@ export async function deleteAppointment(id) {
 export async function deleteTrainingRequest(id) {
   data.trainingRequests = data.trainingRequests.filter((t) => String(t.id) !== String(id));
   await sbDelete("training_requests", id);
+}
+
+export async function deleteMaintenanceRequest(id) {
+  data.maintenanceRequests = (data.maintenanceRequests || []).filter((t) => String(t.id) !== String(id));
+  await sbDelete("maintenance_requests", id);
 }
 
 // ── Auth admin ───────────────────────────────────────────────

@@ -1,6 +1,8 @@
 import { adminItem, clearTimers, dashboardActivity, logo, messageConversation, requestConversation, requestConversationSimple } from "./components.js";
 import { countNew } from "./format.js";
-import { data, getAdminPassword, isAdminLoggedIn, loginAdmin, logoutAdmin, saveData, setAdminPassword, today, updateOrder, updateMessage, updateAppointment, updateTrainingRequest, deleteOrder, deleteMessage, deleteAppointment, deleteTrainingRequest, loadRemoteData, uploadMediaFile } from "./store.js";
+import { data, getAdminPassword, isAdminLoggedIn, loginAdmin, logoutAdmin, saveData, setAdminPassword, today, updateOrder, updateMessage, updateAppointment, updateTrainingRequest, deleteOrder, deleteMessage, deleteAppointment, deleteTrainingRequest, deleteMaintenanceRequest, loadRemoteData, uploadMediaFile } from "./store.js";
+
+const ADMIN_BASE = "/27ditona@ad07";
 
 export function requireAdmin() {
   if (!isAdminLoggedIn()) {
@@ -34,7 +36,7 @@ export function adminLogin() {
     event.preventDefault();
     if (new FormData(event.target).get("password") !== getAdminPassword()) return alert("Mot de passe incorrect.");
     loginAdmin();
-    window.ditonaGo("/admin");
+    window.ditonaGo(ADMIN_BASE);
   });
 }
 
@@ -44,6 +46,7 @@ function notifications() {
     orders: countNew(data.orders),
     messages: countNew(data.messages),
     training: countNew(data.trainingRequests || []),
+    maintenance: countNew(data.maintenanceRequests || []),
   };
 }
 
@@ -74,18 +77,18 @@ export function adminShell(content, active = "dashboard") {
       <aside class="admin-side">
         <button class="admin-collapse" data-admin-collapse type="button" title="Reduire / ouvrir la navigation"><span>×</span></button>
         ${logo("admin-logo")}
-        ${adminNav("Dashboard", "/admin", active, "dashboard")}
-        ${adminNav("Accueil anime", "/admin/home", active, "home")}
-        ${adminNav("Medias sections", "/admin/sections", active, "sections")}
-        ${adminNav("Machines", "/admin/machines", active, "machines")}
-        ${adminNav("Realisations", "/admin/realisations", active, "realisations")}
-        ${adminNav("Services", "/admin/services", active, "services")}
-        ${adminNav("Formations", "/admin/formations", active, "formations", counts.training)}
-        ${adminNav("Rendez-vous", "/admin/appointments", active, "appointments", counts.appointments)}
-        ${adminNav("Achats", "/admin/orders", active, "orders", counts.orders)}
-        ${adminNav("Messages", "/admin/messages", active, "messages", counts.messages)}
-        ${adminNav("Comptes", "/admin/accounts", active, "accounts")}
-        ${adminNav("Mot de passe", "/admin/settings", active, "settings")}
+        ${adminNav("Dashboard", ADMIN_BASE, active, "dashboard")}
+        ${adminNav("Accueil anime", `${ADMIN_BASE}/home`, active, "home")}
+        ${adminNav("Medias sections", `${ADMIN_BASE}/sections`, active, "sections")}
+        ${adminNav("Machines", `${ADMIN_BASE}/machines`, active, "machines")}
+        ${adminNav("Nos Realisations", `${ADMIN_BASE}/realisations`, active, "realisations")}
+        ${adminNav("Maintenance", `${ADMIN_BASE}/services`, active, "services", counts.maintenance)}
+        ${adminNav("Formations", `${ADMIN_BASE}/formations`, active, "formations", counts.training)}
+        ${adminNav("Rendez-vous", `${ADMIN_BASE}/appointments`, active, "appointments", counts.appointments)}
+        ${adminNav("Achats", `${ADMIN_BASE}/orders`, active, "orders", counts.orders)}
+        ${adminNav("Messages", `${ADMIN_BASE}/messages`, active, "messages", counts.messages)}
+        ${adminNav("Comptes", `${ADMIN_BASE}/accounts`, active, "accounts")}
+        ${adminNav("Mot de passe", `${ADMIN_BASE}/settings`, active, "settings")}
         <button data-logout>Deconnexion</button>
         <button data-link="/">Voir le site</button>
       </aside>
@@ -115,11 +118,11 @@ export function adminDashboard() {
       </div>
     </div>
     <div class="admin-stats">
-      <button data-link="/admin/home"><strong>${data.homeMedia.length}</strong><span>Medias accueil</span></button>
-      <button data-link="/admin/machines"><strong>${data.machines.length}</strong><span>Machines</span></button>
-      <button data-link="/admin/formations"><strong>${(data.trainingRequests || []).length}</strong><span>Formations</span></button>
-      <button data-link="/admin/appointments"><strong>${data.appointments.length}</strong><span>Rendez-vous</span></button>
-      <button data-link="/admin/messages"><strong>${data.messages.length}</strong><span>Messages</span></button>
+      <button data-link="${ADMIN_BASE}/home"><strong>${data.homeMedia.length}</strong><span>Medias accueil</span></button>
+      <button data-link="${ADMIN_BASE}/machines"><strong>${data.machines.length}</strong><span>Machines</span></button>
+      <button data-link="${ADMIN_BASE}/formations"><strong>${(data.trainingRequests || []).length}</strong><span>Formations</span></button>
+      <button data-link="${ADMIN_BASE}/appointments"><strong>${data.appointments.length}</strong><span>Rendez-vous</span></button>
+      <button data-link="${ADMIN_BASE}/messages"><strong>${data.messages.length}</strong><span>Messages</span></button>
     </div>
     <section class="panel dashboard-panel">
       <div class="section-head compact"><div><p class="eyebrow">Activite</p><h2>Demandes recentes</h2></div></div>
@@ -209,20 +212,24 @@ export function adminMachines() {
   bindMachineForm();
 }
 
+// MODIFIÉ - Formulaire Réalisations avec images pour chaque étape
 export function adminRealisations() {
   if (!requireAdmin()) return;
   adminShell(`
-    <div class="admin-head"><p class="eyebrow">Galerie et avis clients</p><h1>Realisations</h1></div>
+    <div class="admin-head"><p class="eyebrow">Galerie</p><h1>Nos Realisations</h1></div>
     <form id="realisation-form" class="panel admin-form">
       <input name="id" type="hidden">
       <label>Titre<input name="title" required></label>
-      <label>Prix FCFA<input name="price" type="number"></label>
-      <label>Etoiles client<input name="rating" type="number" min="0" max="5" step="1" value="5"></label>
-      <label>Commentaire<textarea name="comment" rows="3" required></textarea></label>
-      <label>Avis client<textarea name="review" rows="3" placeholder="Ex: Client satisfait par la qualite du travail."></textarea></label>
-      <label>Image<input name="imageFile" type="file" accept="image/*"></label>
-      <input name="image" placeholder="URL image">
-      <button class="primary">Enregistrer</button>
+      <label>Description courte<textarea name="comment" rows="3" required></textarea></label>
+      <label>Image principale<input name="imageFile" type="file" accept="image/*"></label>
+      <input name="image" placeholder="URL image principale">
+      
+      <h3 style="margin-top:24px;">Etapes de realisation</h3>
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:16px;">Ajoutez chaque etape avec son titre, sa description et une image optionnelle</p>
+      <div id="steps-container"></div>
+      <button type="button" class="ghost small" id="add-step-btn">+ Ajouter une etape</button>
+      
+      <button class="primary" style="margin-top:24px;">Enregistrer</button>
       <button class="ghost" type="reset">Nouveau</button>
     </form>
     <div class="admin-list">${data.realisations.map((r) => adminItem({ ...r, name: r.title }, "realisation")).join("")}</div>
@@ -230,37 +237,68 @@ export function adminRealisations() {
   bindRealisationForm();
 }
 
+// MODIFIÉ - Formulaire Maintenance avec images pour problème, solution et historique
 export function adminServices() {
   if (!requireAdmin()) return;
   adminShell(`
-    <div class="admin-head"><p class="eyebrow">Services</p><h1>Services DITONA</h1></div>
+    <div class="admin-head"><p class="eyebrow">Maintenance</p><h1>Services de maintenance</h1></div>
     <form id="service-form" class="panel admin-form">
       <input name="id" type="hidden">
       <label>Titre<input name="title" required></label>
-      <label>Image<input name="imageFile" type="file" accept="image/*"></label>
-      <label>Description<textarea name="text" rows="4" required></textarea></label>
-      <input name="image" placeholder="URL image">
-      <button class="primary">Enregistrer</button>
+      <label>Image principale<input name="imageFile" type="file" accept="image/*"></label>
+      <input name="image" placeholder="URL image principale">
+      
+      <h3 style="margin-top:24px;">Probleme rencontre</h3>
+      <label>Description du probleme<textarea name="problem" rows="3" required></textarea></label>
+      <label>Photo du probleme<input name="problemImageFile" type="file" accept="image/*"></label>
+      <input name="problemImage" placeholder="URL image probleme">
+      
+      <h3 style="margin-top:24px;">Solution apportee</h3>
+      <label>Description de la solution<textarea name="solution" rows="4" required></textarea></label>
+      <label>Photo de la solution<input name="solutionImageFile" type="file" accept="image/*"></label>
+      <input name="solutionImage" placeholder="URL image solution">
+      
+      <h3 style="margin-top:24px;">Historique des interventions</h3>
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:16px;">Ajoutez chaque intervention avec date, probleme, solution et image optionnelle</p>
+      <div id="history-container"></div>
+      <button type="button" class="ghost small" id="add-history-btn">+ Ajouter une intervention</button>
+      
+      <button class="primary" style="margin-top:24px;">Enregistrer</button>
       <button class="ghost" type="reset">Nouveau</button>
     </form>
-    <div class="admin-list">${data.services.map((s) => adminItem({ ...s, name: s.title, comment: s.text }, "service")).join("")}</div>
+    <div class="admin-list">${(data.maintenanceServices || []).map((s) => adminItem({ ...s, name: s.title, comment: s.solution }, "service")).join("")}</div>
+    <div class="admin-head secondary-head"><p class="eyebrow">Demandes</p><h1>Demandes de maintenance</h1></div>
+    ${requestConversationSimple(data.maintenanceRequests || [], "maintenance")}
   `, "services");
   bindServiceForm();
+  injectDeleteButtons("maintenance");
 }
 
-// MODIFIÉ - SANS ZONE DE RÉPONSE ADMIN
 export function adminFormations() {
   if (!requireAdmin()) return;
   markSeen("trainingRequests");
   const list = (data.trainingRequests || []).map((f) => ({ ...f, client: `${f.name || ""} ${f.firstname || ""}`.trim(), note: f.message }));
   adminShell(`
-    <div class="admin-head"><p class="eyebrow">Demandes</p><h1>Formations</h1></div>
+    <div class="admin-head"><p class="eyebrow">Catalogue</p><h1>Nos Formations</h1></div>
+    <form id="formation-catalog-form" class="panel admin-form">
+      <input name="id" type="hidden">
+      <label>Titre<input name="title" required></label>
+      <label>Duree<input name="duration"></label>
+      <label>Disponibilite<select name="available"><option value="true">Disponible</option><option value="false">Non disponible</option></select></label>
+      <label>Description<textarea name="description" rows="4" required></textarea></label>
+      <label>Image<input name="imageFile" type="file" accept="image/*"></label>
+      <input name="image" placeholder="URL image">
+      <button class="primary">Enregistrer la formation</button>
+      <button class="ghost" type="reset">Nouvelle formation</button>
+    </form>
+    <div class="admin-list">${(data.formations || []).map((f) => adminItem({ ...f, name: f.title, comment: f.description, status: f.available ? "Disponible" : "Non disponible" }, "formation-item")).join("")}</div>
+    <div class="admin-head secondary-head"><p class="eyebrow">Demandes</p><h1>Demandes de formation</h1></div>
     ${requestConversationSimple(list, "formation")}
   `, "formations");
+  bindFormationCatalogForm();
   injectDeleteButtons("formation");
 }
 
-// MODIFIÉ - SANS ZONE DE RÉPONSE ADMIN
 export function adminAppointments() {
   if (!requireAdmin()) return;
   markSeen("appointments");
@@ -271,7 +309,6 @@ export function adminAppointments() {
   injectDeleteButtons("appointment");
 }
 
-// MODIFIÉ - SANS ZONE DE RÉPONSE ADMIN
 export function adminOrders() {
   if (!requireAdmin()) return;
   markSeen("orders");
@@ -313,7 +350,6 @@ export function adminAccounts() {
   `, "accounts");
 }
 
-// MODIFIÉ - AFFICHAGE DES ERREURS EN BAS DU FORMULAIRE
 export function adminSettings() {
   if (!requireAdmin()) return;
   adminShell(`
@@ -351,12 +387,10 @@ export function adminSettings() {
   });
 }
 
-// MODIFIÉ - Synchronisation forcée après upload
 async function readImage(input, fallback, folder = "admin") {
   const file = input.files?.[0];
   if (!file) return fallback || "";
   const imageUrl = await uploadMediaFile(file, folder);
-  // Forcer la synchronisation après upload
   await saveData();
   return imageUrl;
 }
@@ -426,19 +460,70 @@ function bindMachineForm() {
   });
 }
 
+// MODIFIÉ - Gestion des étapes avec images multiples
 function bindRealisationForm() {
   const form = document.querySelector("#realisation-form");
+  const stepsContainer = document.querySelector("#steps-container");
+  const addStepBtn = document.querySelector("#add-step-btn");
+  
+  // Fonction pour ajouter une étape
+  function addStep(step = {}) {
+    const stepIndex = stepsContainer.children.length;
+    const stepDiv = document.createElement("div");
+    stepDiv.className = "step-entry";
+    stepDiv.dataset.index = stepIndex;
+    stepDiv.innerHTML = `
+      <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+        <h4>Etape ${stepIndex + 1}</h4>
+        <button type="button" class="danger small" onclick="this.closest('.step-entry').remove()">Supprimer</button>
+      </div>
+      <label>Titre<input name="step-title-${stepIndex}" value="${step.title || ""}"></label>
+      <label>Description<textarea name="step-description-${stepIndex}" rows="2">${step.description || ""}</textarea></label>
+      <label>Image<input name="step-image-file-${stepIndex}" type="file" accept="image/*"></label>
+      <input name="step-image-${stepIndex}" placeholder="URL image etape" value="${step.image || ""}">
+      ${step.image ? `<img src="${step.image}" style="max-width:150px; margin-top:8px; border-radius:6px;">` : ""}
+    `;
+    stepsContainer.appendChild(stepDiv);
+  }
+  
+  // Bouton ajouter étape
+  addStepBtn?.addEventListener("click", () => addStep());
+  
+  // Charger les étapes existantes si modification
+  const idInput = form.querySelector('input[name="id"]');
+  if (idInput.value) {
+    const existing = data.realisations.find(r => r.id === Number(idInput.value));
+    if (existing?.steps) {
+      existing.steps.forEach(step => addStep(step));
+    }
+  }
+  
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     await submitAdminForm(async () => {
-    const fd = new FormData(form);
-    const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
-    const existing = data.realisations.find((r) => r.id === id);
-    const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "realisations");
-    const rating = Math.max(0, Math.min(5, Number(fd.get("rating")) || 0));
-    const next = { id, title: fd.get("title"), price: Number(fd.get("price")) || null, rating, review: fd.get("review"), comment: fd.get("comment"), image };
-    data.realisations = existing ? data.realisations.map((r) => r.id === id ? next : r) : [next, ...data.realisations];
-    await persistAdminData(adminRealisations);
+      const fd = new FormData(form);
+      const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
+      const existing = data.realisations.find((r) => r.id === id);
+      const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "realisations");
+      
+      // Collecter toutes les étapes
+      const steps = [];
+      const stepEntries = stepsContainer.querySelectorAll(".step-entry");
+      for (let i = 0; i < stepEntries.length; i++) {
+        const title = fd.get(`step-title-${i}`);
+        const description = fd.get(`step-description-${i}`);
+        const imageInput = form.querySelector(`input[name="step-image-file-${i}"]`);
+        const existingImage = fd.get(`step-image-${i}`);
+        const stepImage = await readImage(imageInput, existingImage || "", "realisations-steps");
+        
+        if (title && description) {
+          steps.push({ title, description, image: stepImage });
+        }
+      }
+      
+      const next = { id, title: fd.get("title"), comment: fd.get("comment"), image, steps };
+      data.realisations = existing ? data.realisations.map((r) => r.id === id ? next : r) : [next, ...data.realisations];
+      await persistAdminData(adminRealisations);
     });
   });
 }
@@ -467,18 +552,115 @@ function bindSectionMediaForm() {
   load();
 }
 
+// MODIFIÉ - Gestion des images pour problème, solution et historique
 function bindServiceForm() {
   const form = document.querySelector("#service-form");
+  const historyContainer = document.querySelector("#history-container");
+  const addHistoryBtn = document.querySelector("#add-history-btn");
+  
+  // Fonction pour ajouter une intervention
+  function addHistory(entry = {}) {
+    const entryIndex = historyContainer.children.length;
+    const entryDiv = document.createElement("div");
+    entryDiv.className = "history-entry";
+    entryDiv.dataset.index = entryIndex;
+    entryDiv.innerHTML = `
+      <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+        <h4>Intervention ${entryIndex + 1}</h4>
+        <button type="button" class="danger small" onclick="this.closest('.history-entry').remove()">Supprimer</button>
+      </div>
+      <label>Date<input name="history-date-${entryIndex}" type="date" value="${entry.date || ""}"></label>
+      <label>Probleme<textarea name="history-problem-${entryIndex}" rows="2">${entry.problem || ""}</textarea></label>
+      <label>Solution<textarea name="history-solution-${entryIndex}" rows="2">${entry.solution || ""}</textarea></label>
+      <label>Image<input name="history-image-file-${entryIndex}" type="file" accept="image/*"></label>
+      <input name="history-image-${entryIndex}" placeholder="URL image" value="${entry.image || ""}">
+      ${entry.image ? `<img src="${entry.image}" style="max-width:150px; margin-top:8px; border-radius:6px;">` : ""}
+    `;
+    historyContainer.appendChild(entryDiv);
+  }
+  
+  // Bouton ajouter intervention
+  addHistoryBtn?.addEventListener("click", () => addHistory());
+  
+  // Charger les interventions existantes si modification
+  const idInput = form.querySelector('input[name="id"]');
+  if (idInput.value) {
+    const existing = (data.maintenanceServices || []).find(s => s.id === Number(idInput.value));
+    if (existing?.history) {
+      existing.history.forEach(entry => addHistory(entry));
+    }
+  }
+  
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     await submitAdminForm(async () => {
-    const fd = new FormData(form);
-    const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
-    const existing = data.services.find((s) => s.id === id);
-    const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "services");
-    const next = { id, title: fd.get("title"), text: fd.get("text"), image };
-    data.services = existing ? data.services.map((s) => s.id === id ? next : s) : [next, ...data.services];
-    await persistAdminData(adminServices);
+      const fd = new FormData(form);
+      const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
+      data.maintenanceServices = data.maintenanceServices || [];
+      const existing = data.maintenanceServices.find((s) => s.id === id);
+      const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "services");
+      
+      // Image problème
+      const problemImageInput = form.querySelector('input[name="problemImageFile"]');
+      const problemImage = await readImage(problemImageInput, fd.get("problemImage") || existing?.problemImage || "", "services-problem");
+      
+      // Image solution
+      const solutionImageInput = form.querySelector('input[name="solutionImageFile"]');
+      const solutionImage = await readImage(solutionImageInput, fd.get("solutionImage") || existing?.solutionImage || "", "services-solution");
+      
+      // Collecter toutes les interventions
+      const history = [];
+      const historyEntries = historyContainer.querySelectorAll(".history-entry");
+      for (let i = 0; i < historyEntries.length; i++) {
+        const date = fd.get(`history-date-${i}`);
+        const problem = fd.get(`history-problem-${i}`);
+        const solution = fd.get(`history-solution-${i}`);
+        const imageInput = form.querySelector(`input[name="history-image-file-${i}"]`);
+        const existingImage = fd.get(`history-image-${i}`);
+        const entryImage = await readImage(imageInput, existingImage || "", "services-history");
+        
+        if (problem && solution) {
+          history.push({ date, problem, solution, image: entryImage });
+        }
+      }
+      
+      const next = { 
+        id, 
+        title: fd.get("title"), 
+        problem: fd.get("problem"), 
+        problemImage,
+        solution: fd.get("solution"), 
+        solutionImage,
+        text: fd.get("solution"), 
+        history, 
+        image 
+      };
+      data.maintenanceServices = existing ? data.maintenanceServices.map((s) => s.id === id ? next : s) : [next, ...data.maintenanceServices];
+      await persistAdminData(adminServices);
+    });
+  });
+}
+
+function bindFormationCatalogForm() {
+  const form = document.querySelector("#formation-catalog-form");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await submitAdminForm(async () => {
+      data.formations = data.formations || [];
+      const fd = new FormData(form);
+      const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
+      const existing = data.formations.find((f) => f.id === id);
+      const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "formations");
+      const next = {
+        id,
+        title: fd.get("title"),
+        description: fd.get("description"),
+        duration: fd.get("duration"),
+        available: fd.get("available") === "true",
+        image,
+      };
+      data.formations = existing ? data.formations.map((f) => f.id === id ? next : f) : [next, ...data.formations];
+      await persistAdminData(adminFormations);
     });
   });
 }
@@ -518,7 +700,7 @@ export function fillForm(formId, item) {
 }
 
 export async function saveRequest(type, id) {
-  const key = type === "order" ? "orders" : type === "appointment" ? "appointments" : type === "formation" ? "trainingRequests" : "messages";
+  const key = type === "order" ? "orders" : type === "appointment" ? "appointments" : type === "formation" ? "trainingRequests" : type === "maintenance" ? "maintenanceRequests" : "messages";
   const reply = document.querySelector(`[data-${type}-reply="${CSS.escape(String(id))}"]`)?.value || "";
   const updates = {
     seen_at: today(),
@@ -529,27 +711,31 @@ export async function saveRequest(type, id) {
   if (type === "order") await updateOrder(id, updates);
   else if (type === "appointment") await updateAppointment(id, updates);
   else if (type === "formation") await updateTrainingRequest(id, updates);
+  else if (type === "maintenance") await saveData();
   else await updateMessage(id, updates);
   if (type === "order") adminOrders();
   if (type === "appointment") adminAppointments();
   if (type === "formation") adminFormations();
+  if (type === "maintenance") adminServices();
   if (type === "message") adminMessages();
 }
 
 export async function deleteRequest(type, id) {
-  const key = type === "order" ? "orders" : type === "appointment" ? "appointments" : type === "formation" ? "trainingRequests" : "messages";
+  const key = type === "order" ? "orders" : type === "appointment" ? "appointments" : type === "formation" ? "trainingRequests" : type === "maintenance" ? "maintenanceRequests" : "messages";
   data[key] = (data[key] || []).filter((item) => String(item.id) !== String(id));
   if (type === "order") await deleteOrder(id);
   else if (type === "appointment") await deleteAppointment(id);
   else if (type === "formation") await deleteTrainingRequest(id);
+  else if (type === "maintenance") await deleteMaintenanceRequest(id);
   else await deleteMessage(id);
   if (type === "order") adminOrders();
   if (type === "appointment") adminAppointments();
   if (type === "formation") adminFormations();
+  if (type === "maintenance") adminServices();
   if (type === "message") adminMessages();
 }
 
 export function logout() {
   logoutAdmin();
-  window.ditonaGo("/admin");
+  window.ditonaGo(ADMIN_BASE);
 }

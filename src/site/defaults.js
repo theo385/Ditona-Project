@@ -1,14 +1,13 @@
 export const DEFAULT_ADMIN_PASSWORD = "admin1234";
-
 export const defaults = {
   sectionMedia: {
     machines: { type: "image", title: "Machines et prix", subtitle: "Consultez les solutions disponibles et envoyez une demande d'achat.", image: "/realisations/cnc-3w-iso.jpeg", backImage: "/realisations/cnc-3w-noir.jpeg" },
-    realisations: { type: "image", title: "Chantiers, machines et prototypes", subtitle: "Realisations DITONA avec prix indicatifs et commentaires techniques.", image: "/realisations/chantier-beton.jpeg" },
-    services: { type: "image", title: "Services techniques DITONA", subtitle: "SAV, accompagnement, vente, formation, maintenance et automatisation.", image: "/realisations/maintenance-groupe-2.jpeg", backImage: "/realisations/maintenance-groupe-1.jpeg" },
-    formation: { type: "image", title: "Formation technique DITONA", subtitle: "Dites ce que vous voulez apprendre et l'equipe vous proposera un programme adapte.", image: "/realisations/ligne-remplissage.jpeg", backImage: "/realisations/machine-labo.jpeg" },
+    realisations: { type: "image", title: "Nos Realisations", subtitle: "Decouvrez nos projets realises etape par etape", image: "/realisations/chantier-beton.jpeg" },
+    services: { type: "image", title: "Maintenance", subtitle: "Services de maintenance et depannage industriel", image: "/realisations/maintenance-groupe-2.jpeg", backImage: "/realisations/maintenance-groupe-1.jpeg" },
+    formation: { type: "image", title: "Nos Formations", subtitle: "Decouvrez nos programmes de formation disponibles", image: "/realisations/ligne-remplissage.jpeg", backImage: "/realisations/machine-labo.jpeg" },
     about: { type: "image", title: "DITONA Engineering", subtitle: "DITONA Engineering developpe des solutions techniques pour produire, maintenir et ameliorer les equipements industriels.", image: "/realisations/maintenance-groupe-1.jpeg" },
     appointment: { type: "image", title: "Rencontrer DITONA Engineering", subtitle: "Planifiez un echange pour un achat, un projet, une maintenance ou une formation.", image: "/realisations/cnc-3w-iso.jpeg" },
-    contact: { type: "image", title: "Envoyer une demande", subtitle: "Demande de devis, information machine, SAV ou formation", image: "/realisations/maintenance-groupe-2.jpeg" },
+    contact: { type: "image", title: "Contacts", subtitle: "Nos coordonnees et moyens de contact", image: "/realisations/maintenance-groupe-2.jpeg" },
   },
   homeMedia: [
     {
@@ -68,7 +67,6 @@ export const defaults = {
       subtitle: "Adaptee aux ateliers techniques, ecoles et productions legeres.",
       image: "/realisations/cnc-3w-iso.jpeg",
       backImage: "/realisations/cnc-3w-noir.jpeg",
-      backImage: "/realisations/cnc-3w-noir.jpeg",
     },
     {
       id: 2,
@@ -76,7 +74,6 @@ export const defaults = {
       title: "Ligne industrielle de remplissage",
       subtitle: "Conception 3D, fabrication et installation d'une ligne automatisee.",
       image: "/realisations/ligne-remplissage.jpeg",
-      backImage: "/realisations/machine-labo.jpeg",
       backImage: "/realisations/machine-labo.jpeg",
     },
     {
@@ -133,13 +130,126 @@ export const defaults = {
     },
   ],
   realisations: [
-    { id: 101, title: "Maintenance groupe hydraulique", image: "/realisations/maintenance-groupe-1.jpeg", backImage: "/realisations/maintenance-groupe-2.jpeg", price: 450000, rating: 5, review: "Client satisfait: intervention rapide et resultat propre.", comment: "Controle du systeme, depannage et remise en fonctionnement." },
-    { id: 102, title: "Chantier beton arme", image: "/realisations/chantier-beton.jpeg", backImage: "/realisations/maintenance-groupe-1.jpeg", price: 3500000, rating: 5, review: "Bon suivi technique et conseils utiles sur le chantier.", comment: "Suivi technique de chantier, ferraillage et structure beton." },
-    { id: 103, title: "Ligne industrielle de remplissage", image: "/realisations/ligne-remplissage.jpeg", backImage: "/realisations/machine-labo.jpeg", price: 12500000, rating: 5, review: "Installation efficace, machine bien expliquee a l'equipe.", comment: "Conception 3D, fabrication et installation d'une ligne automatisee." },
-    { id: 104, title: "CNC DITONA 3W ISO", image: "/realisations/cnc-3w-iso.jpeg", backImage: "/realisations/cnc-3w-noir.jpeg", price: 2800000, rating: 4, review: "Tres bonne machine pour apprendre et produire en atelier.", comment: "Machine CNC personnalisee pour usinage leger et formation." },
-    { id: 105, title: "Prototype laboratoire", image: "/realisations/machine-labo.jpeg", backImage: "/realisations/ligne-remplissage.jpeg", price: 6500000, rating: 5, review: "Solution adaptee a notre besoin de test.", comment: "Developpement d'un systeme automatise avec instrumentation." },
-    { id: 106, title: "CNC DITONA finition noire", image: "/realisations/cnc-3w-noir.jpeg", backImage: "/realisations/cnc-3w-iso.jpeg", price: 2800000, rating: 4, review: "Design propre et fonctionnement stable.", comment: "Visualisation produit et integration de l'identite DITONA." },
-    { id: 107, title: "Intervention electrique terrain", image: "/realisations/maintenance-groupe-2.jpeg", backImage: "/realisations/maintenance-groupe-1.jpeg", price: 300000, rating: 5, review: "Depannage clair avec explications apres intervention.", comment: "Verification coffret, cablage et assistance technique." },
+    { 
+      id: 101, 
+      title: "Maintenance groupe hydraulique", 
+      image: "/realisations/maintenance-groupe-1.jpeg", 
+      backImage: "/realisations/maintenance-groupe-2.jpeg",
+      steps: [
+        { title: "Diagnostic initial", description: "Analyse complete du systeme hydraulique et identification des pannes" },
+        { title: "Démontage", description: "Démontage sécurisé des composants défectueux" },
+        { title: "Réparation", description: "Remplacement des pieces usées et remise en état" },
+        { title: "Tests", description: "Tests de fonctionnement et controles de sécurité" },
+        { title: "Livraison", description: "Remise en service et formation de l'équipe" }
+      ]
+    },
+    { 
+      id: 102, 
+      title: "Chantier beton armé", 
+      image: "/realisations/chantier-beton.jpeg", 
+      backImage: "/realisations/maintenance-groupe-1.jpeg",
+      steps: [
+        { title: "Étude technique", description: "Analyse des plans et calculs de structure" },
+        { title: "Préparation", description: "Mise en place du chantier et approvisionnement" },
+        { title: "Ferraillage", description: "Réalisation des armatures selon les plans" },
+        { title: "Coulage", description: "Coulage du beton et vibration" },
+        { title: "Finitions", description: "Décoffrage et finitions de surface" }
+      ]
+    },
+    { 
+      id: 103, 
+      title: "Ligne industrielle de remplissage", 
+      image: "/realisations/ligne-remplissage.jpeg", 
+      backImage: "/realisations/machine-labo.jpeg",
+      steps: [
+        { title: "Conception 3D", description: "Modélisation complète de la ligne en CAO" },
+        { title: "Fabrication", description: "Usinage et assemblage des composants" },
+        { title: "Installation", description: "Montage sur site et raccordements" },
+        { title: "Mise en service", description: "Tests et réglages des paramètres" },
+        { title: "Formation", description: "Formation des opérateurs à l'utilisation" }
+      ]
+    },
+    { 
+      id: 104, 
+      title: "CNC DITONA 3W ISO", 
+      image: "/realisations/cnc-3w-iso.jpeg", 
+      backImage: "/realisations/cnc-3w-noir.jpeg",
+      steps: [
+        { title: "Design", description: "Conception de la machine selon les besoins client" },
+        { title: "Usinage", description: "Fabrication des pieces mécaniques" },
+        { title: "Assemblage", description: "Montage complet de la machine" },
+        { title: "Programmation", description: "Configuration du controleur CNC" },
+        { title: "Tests", description: "Validation des performances et précision" }
+      ]
+    },
+  ],
+  maintenanceServices: [
+    { 
+      id: 1, 
+      title: "Maintenance preventive", 
+      image: "/realisations/maintenance-groupe-2.jpeg",
+      problem: "Usure normale des équipements avec risque de panne",
+      solution: "Inspection régulière, remplacement des pièces d'usure, lubrification",
+      history: [
+        { date: "2024-01-15", problem: "Vibrations anormales sur ligne de production", solution: "Remplacement des roulements et réalignement" },
+        { date: "2024-02-20", problem: "Fuite hydraulique sur presse", solution: "Remplacement des joints et vérification du circuit" }
+      ]
+    },
+    { 
+      id: 2, 
+      title: "Dépannage urgent", 
+      image: "/realisations/maintenance-groupe-1.jpeg",
+      problem: "Arrêt imprévu de machine en production",
+      solution: "Diagnostic rapide, réparation sur site, remise en service",
+      history: [
+        { date: "2024-03-10", problem: "Panne électrique sur automate", solution: "Remplacement du module défectueux en 2h" },
+        { date: "2024-04-05", problem: "Blocage mécanique sur convoyeur", solution: "Réparation de la transmission et nettoyage" }
+      ]
+    },
+    { 
+      id: 3, 
+      title: "Rénovation équipements", 
+      image: "/realisations/chantier-beton.jpeg",
+      problem: "Équipements anciens avec baisse de performance",
+      solution: "Modernisation, mise à jour des composants, optimisation",
+      history: [
+        { date: "2024-01-30", problem: "Machine CNC obsolète", solution: "Mise à jour du contrôleur et des moteurs" }
+      ]
+    },
+  ],
+  formations: [
+    { 
+      id: 1, 
+      title: "Formation CNC", 
+      description: "Apprentissage de la programmation et utilisation de machines CNC",
+      duration: "2 semaines",
+      available: true,
+      image: "/realisations/cnc-3w-iso.jpeg"
+    },
+    { 
+      id: 2, 
+      title: "Maintenance industrielle", 
+      description: "Techniques de maintenance préventive et corrective",
+      duration: "1 semaine",
+      available: true,
+      image: "/realisations/maintenance-groupe-1.jpeg"
+    },
+    { 
+      id: 3, 
+      title: "Automatisation", 
+      description: "Programmation d'automates et systèmes automatisés",
+      duration: "3 semaines",
+      available: false,
+      image: "/realisations/ligne-remplissage.jpeg"
+    },
+    { 
+      id: 4, 
+      title: "Soudure industrielle", 
+      description: "Techniques de soudure TIG, MIG et électrode",
+      duration: "1 semaine",
+      available: true,
+      image: "/realisations/chantier-beton.jpeg"
+    },
   ],
   services: [
     { id: 1, title: "Service apres-vente", image: "/realisations/maintenance-groupe-2.jpeg", backImage: "/realisations/maintenance-groupe-1.jpeg", text: "Maintenance preventive, depannage, pieces, controle et suivi apres installation.", target: "/services" },
@@ -150,4 +260,6 @@ export const defaults = {
   messages: [],
   orders: [],
   appointments: [],
+  trainingRequests: [],
+  maintenanceRequests: [],
 };

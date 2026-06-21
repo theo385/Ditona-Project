@@ -28,10 +28,15 @@ import {
   chatbotAnswer,
   contactPage,
   formationPage,
+  trainingApplyPage,
   homePage,
   loginPage,
+  signupPage,
   machinesPage,
   orderMachine,
+  maintenanceDetailPage,
+  maintenanceRequestPage,
+  realisationDetailPage,
   realisationsPage,
   servicesPage,
   forgotPasswordPage,
@@ -39,6 +44,10 @@ import {
   resetPasswordPage,
   signupSuccessPage,
 } from "./publicPages.js";
+
+const ADMIN_BASE = "/27ditona@ad07";
+const PUBLIC_LIMIT_MS = 60000;
+const GUEST_STARTED_KEY = "ditona_guest_started_at";
 
 export function go(path) {
   history.pushState({}, "", path);
@@ -75,6 +84,56 @@ function bindGlobal() {
   document.querySelector("[data-logout]")?.addEventListener("click", logout);
   bindChatbot();
   bindAdminActions();
+  startGuestGate();
+}
+
+function isProtectedPublicPath(path = location.pathname) {
+  return !path.startsWith(ADMIN_BASE) && !["/login", "/signup", "/signup-success", "/forgot-password", "/forgot-success", "/reset-password"].includes(path);
+}
+
+function startGuestGate() {
+  if (!isProtectedPublicPath() || sessionStorage.getItem("ditona_customer_session")) {
+    localStorage.removeItem(GUEST_STARTED_KEY);
+    return;
+  }
+  
+  let started = Number(localStorage.getItem(GUEST_STARTED_KEY));
+  if (!started || isNaN(started)) {
+    started = Date.now();
+    localStorage.setItem(GUEST_STARTED_KEY, String(started));
+  }
+  
+  window.clearTimeout(window.ditonaGuestGateTimer);
+  const remaining = Math.max(0, PUBLIC_LIMIT_MS - (Date.now() - started));
+  
+  window.ditonaGuestGateTimer = window.setTimeout(() => {
+    if (sessionStorage.getItem("ditona_customer_session") || !isProtectedPublicPath()) return;
+    if (document.querySelector(".session-gate")) return;
+    
+    document.body.insertAdjacentHTML("beforeend", `
+      <section class="modal-backdrop session-gate">
+        <article class="panel form-panel">
+          <h2>Connexion requise</h2>
+          <p>Pour continuer vos recherches, veuillez vous connecter ou creer un compte.</p>
+          <button class="primary" id="session-gate-login">Se connecter</button>
+          <button class="ghost" id="session-gate-signup">S'inscrire</button>
+        </article>
+      </section>
+    `);
+    
+    const closeModalAndGo = (path) => {
+      document.querySelector(".session-gate")?.remove();
+      go(path);
+    };
+    
+    document.querySelector("#session-gate-login")?.addEventListener("click", () => {
+      closeModalAndGo("/login");
+    });
+    
+    document.querySelector("#session-gate-signup")?.addEventListener("click", () => {
+      closeModalAndGo("/signup");
+    });
+  }, remaining);
 }
 
 function openImagePreview(preview) {
@@ -131,8 +190,10 @@ function bindAdminActions() {
     form.scrollIntoView({ behavior: "smooth" });
   }));
   document.querySelectorAll("[data-delete-section]").forEach((el) => el.addEventListener("click", () => alert("Ce media pilote une section publique. Modifiez-le au lieu de le supprimer.")));
-  document.querySelectorAll("[data-edit-service]").forEach((el) => el.addEventListener("click", () => fillForm("#service-form", data.services.find((s) => s.id === Number(el.dataset.editService)))));
-  document.querySelectorAll("[data-delete-service]").forEach((el) => el.addEventListener("click", async () => { data.services = data.services.filter((s) => s.id !== Number(el.dataset.deleteService)); await saveData(); adminServices(); }));
+  document.querySelectorAll("[data-edit-service]").forEach((el) => el.addEventListener("click", () => fillForm("#service-form", (data.maintenanceServices || []).find((s) => s.id === Number(el.dataset.editService)))));
+  document.querySelectorAll("[data-delete-service]").forEach((el) => el.addEventListener("click", async () => { data.maintenanceServices = (data.maintenanceServices || []).filter((s) => s.id !== Number(el.dataset.deleteService)); await saveData(); adminServices(); }));
+  document.querySelectorAll("[data-edit-formation-item]").forEach((el) => el.addEventListener("click", () => fillForm("#formation-catalog-form", (data.formations || []).find((f) => f.id === Number(el.dataset.editFormationItem)))));
+  document.querySelectorAll("[data-delete-formation-item]").forEach((el) => el.addEventListener("click", async () => { data.formations = (data.formations || []).filter((f) => f.id !== Number(el.dataset.deleteFormationItem)); await saveData(); adminFormations(); }));
   document.querySelectorAll("[data-save-order]").forEach((el) => el.addEventListener("click", () => saveRequest("order", el.dataset.saveOrder)));
   document.querySelectorAll("[data-save-appointment]").forEach((el) => el.addEventListener("click", () => saveRequest("appointment", el.dataset.saveAppointment)));
   document.querySelectorAll("[data-save-formation]").forEach((el) => el.addEventListener("click", () => saveRequest("formation", el.dataset.saveFormation)));
@@ -145,7 +206,7 @@ function bindAdminActions() {
   }));
   document.querySelectorAll("[data-request-select]").forEach((el) => el.addEventListener("click", () => {
     const [type, id] = el.dataset.requestSelect.split(":");
-    const key = type === "order" ? "orders" : type === "appointment" ? "appointments" : "trainingRequests";
+    const key = type === "order" ? "orders" : type === "appointment" ? "appointments" : type === "maintenance" ? "maintenanceRequests" : "trainingRequests";
     const item = (data[key] || []).find((request) => String(request.id) === String(id));
     document.querySelectorAll("[data-request-select]").forEach((button) => button.classList.toggle("active", button === el));
     document.querySelector("[data-request-thread]").innerHTML = requestThread(item, type);
@@ -162,35 +223,45 @@ export function render() {
   const path = location.pathname;
   if (path === "/machines") return loadRemoteData().then(() => refreshSiteContent()).then(() => { machinesPage(); bindGlobal(); });
   if (path === "/realisations") return loadRemoteData().then(() => refreshSiteContent()).then(() => { realisationsPage(); bindGlobal(); });
+  if (path.startsWith("/realisations/")) return loadRemoteData().then(() => refreshSiteContent()).then(() => { realisationDetailPage(path.split("/").pop()); bindGlobal(); });
   if (path === "/services") return loadRemoteData().then(() => refreshSiteContent()).then(() => { servicesPage(); bindGlobal(); });
-  if (path === "/formation") return loadRemoteData().then(() => { formationPage(); bindGlobal(); });
+  if (path === "/services/demande") return loadRemoteData().then(() => refreshSiteContent()).then(() => { maintenanceRequestPage(); bindGlobal(); });
+  if (path.startsWith("/services/")) return loadRemoteData().then(() => refreshSiteContent()).then(() => { maintenanceDetailPage(path.split("/").pop()); bindGlobal(); });
+  if (path === "/formation") return loadRemoteData().then(() => refreshSiteContent()).then(() => { formationPage(); bindGlobal(); });
+  if (path.startsWith("/formation/")) return loadRemoteData().then(() => refreshSiteContent()).then(() => { trainingApplyPage(path.split("/").pop()); bindGlobal(); });
   if (path === "/about") return loadRemoteData().then(() => { aboutPage(); bindGlobal(); });
   if (path === "/rendez-vous") return loadRemoteData().then(() => { appointmentPage(); bindGlobal(); });
   if (path === "/contact") return loadRemoteData().then(() => { contactPage(); bindGlobal(); });
   if (path === "/forgot-password") return loadRemoteData().then(() => { forgotPasswordPage(); bindGlobal(); });
   if (path === "/forgot-success") return loadRemoteData().then(() => { forgotSuccessPage(); bindGlobal(); });
   if (path === "/signup-success") return loadRemoteData().then(() => { signupSuccessPage(); bindGlobal(); });
+  if (path === "/signup") return loadRemoteData().then(() => { signupPage(); bindGlobal(); });
   if (path === "/reset-password") return loadRemoteData().then(() => resetPasswordPage().then(bindGlobal));
   if (path === "/login") {
     return loadRemoteData().then(() => loginPage().then(bindGlobal));
   }
-  if (path.startsWith("/admin")) {
+  
+  // ✅ SUPPRESSION DE LA REDIRECTION /admin → ADMIN_BASE
+  // /admin ne fonctionne plus, seule l'URL sécurisée /27ditona@ad07 fonctionne
+  
+  if (path.startsWith(ADMIN_BASE)) {
     setAdminMode(true);
     return refreshAdminData().then(() => {
-      if (path === "/admin/home") return adminHome();
-      if (path === "/admin/sections") return adminSections();
-      if (path === "/admin/machines") return adminMachines();
-      if (path === "/admin/realisations") return adminRealisations();
-      if (path === "/admin/services") return adminServices();
-      if (path === "/admin/formations") return adminFormations();
-      if (path === "/admin/appointments") return adminAppointments();
-      if (path === "/admin/orders") return adminOrders();
-      if (path === "/admin/messages") return adminMessages();
-      if (path === "/admin/accounts") return adminAccounts();
-      if (path === "/admin/settings") return adminSettings();
+      if (path === `${ADMIN_BASE}/home`) return adminHome();
+      if (path === `${ADMIN_BASE}/sections`) return adminSections();
+      if (path === `${ADMIN_BASE}/machines`) return adminMachines();
+      if (path === `${ADMIN_BASE}/realisations`) return adminRealisations();
+      if (path === `${ADMIN_BASE}/services`) return adminServices();
+      if (path === `${ADMIN_BASE}/formations`) return adminFormations();
+      if (path === `${ADMIN_BASE}/appointments`) return adminAppointments();
+      if (path === `${ADMIN_BASE}/orders`) return adminOrders();
+      if (path === `${ADMIN_BASE}/messages`) return adminMessages();
+      if (path === `${ADMIN_BASE}/accounts`) return adminAccounts();
+      if (path === `${ADMIN_BASE}/settings`) return adminSettings();
       adminDashboard();
     });
   }
+  
   setAdminMode(false);
   return loadRemoteData().then(() => refreshSiteContent()).then(() => { homePage(); bindGlobal(); });
 }
@@ -201,13 +272,13 @@ export async function startApp() {
   window.addEventListener("popstate", render);
   setInterval(() => {
     const publicSyncedPaths = ["/", "/machines", "/realisations", "/services"];
-    if (document.hidden || location.pathname.startsWith("/admin") || !publicSyncedPaths.includes(location.pathname)) return;
+    if (document.hidden || location.pathname.startsWith(ADMIN_BASE) || !publicSyncedPaths.includes(location.pathname)) return;
     refreshSiteContent().then((changed) => {
       if (changed) render();
     });
   }, 5000);
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden || location.pathname.startsWith("/admin")) return;
+    if (document.hidden || location.pathname.startsWith(ADMIN_BASE)) return;
     refreshSiteContent().then(() => {
       if (location.pathname === "/" || location.pathname === "/machines" || location.pathname === "/realisations" || location.pathname === "/services") {
         render();

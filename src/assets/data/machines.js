@@ -151,7 +151,7 @@ export const machines = [
     name: "Compresseur Industriel 500L",
     category: "Pneumatique",
     sector: "BTP",
-    price: 1200000,
+    price: 12000,
     priceLabel: "1 200 000 FCFA",
     description: "Haute pression, grande capacité",
     fullDescription: "Le Compresseur Industriel 500L fournit de l'air comprimé haute pression pour alimenter outils pneumatiques, lignes de production et postes de peinture. Cuve certifiée, groupe refroidi par eau pour une utilisation intensive.",

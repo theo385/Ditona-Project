@@ -1,4 +1,4 @@
-import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession } from "./store.js";
+import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, addMaintenanceRequest, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession } from "./store.js";
 import { machineCard, mediaTag, orderForm, publicShell, realisationCard, requestIdentityFields, serviceCard, setSlideTimer, visualTitle } from "./components.js";
 import { t, tr } from "./i18n.js";
 
@@ -89,20 +89,164 @@ export function realisationsPage() {
   `, "/realisations");
 }
 
+// CORRIGÉ - Affichage des images des étapes
+export function realisationDetailPage(id) {
+  const item = data.realisations.find((row) => String(row.id) === String(id));
+  if (!item) return realisationsPage();
+  const steps = item.steps?.length ? item.steps : [
+    { title: "Analyse du besoin", description: item.comment || item.description || "" },
+    { title: "Preparation", description: "Choix des pieces, organisation de l'intervention et validation technique." },
+    { title: "Realisation", description: "Fabrication, montage, reglage et controles de fonctionnement." },
+    { title: "Validation", description: "Essais finaux, securite et remise au client." },
+  ];
+  publicShell(`
+    <section class="detail-hero">
+      <img src="${item.image}" alt="${tr(item.title)}">
+      <div><p class="eyebrow">${t("realisations.title")}</p><h1>${tr(item.title)}</h1><p>${tr(item.comment || item.description || "")}</p></div>
+    </section>
+    <section class="section detail-layout">
+      <button class="ghost" data-link="/realisations">${t("realisations.back")}</button>
+      <div class="timeline">${steps.map((step, index) => `
+        <article class="panel step-card">
+          <span>${index + 1}</span>
+          <div>
+            <h2>${tr(step.title)}</h2>
+            <p>${tr(step.description)}</p>
+            ${step.image ? `<img src="${step.image}" alt="${tr(step.title)}" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;">` : ""}
+          </div>
+        </article>
+      `).join("")}</div>
+    </section>
+  `, "/realisations");
+}
+
 export function servicesPage() {
   publicShell(`
-    ${visualTitle("services", "Services")}
-    <section class="section"><div class="service-grid wide">${data.services.map(serviceCard).join("")}</div></section>
+    ${visualTitle("services", "Maintenance")}
+    <section class="section">
+      <div class="section-head"><div><p class="eyebrow">${t("maintenance.title")}</p><h2>${t("maintenance.subtitle")}</h2></div><button class="primary" data-link="/services/demande">${t("maintenance.request")}</button></div>
+      <div class="service-grid wide">${(data.maintenanceServices || []).map(serviceCard).join("")}</div>
+    </section>
   `, "/services");
+}
+
+// CORRIGÉ - Affichage des images problème, solution et historique
+export function maintenanceDetailPage(id) {
+  const item = (data.maintenanceServices || []).find((row) => String(row.id) === String(id));
+  if (!item) return servicesPage();
+  publicShell(`
+    <section class="detail-hero">
+      <img src="${item.image}" alt="${tr(item.title)}">
+      <div><p class="eyebrow">${t("maintenance.title")}</p><h1>${tr(item.title)}</h1><p>${tr(item.solution || item.text || "")}</p></div>
+    </section>
+    <section class="section detail-layout">
+      <button class="ghost" data-link="/services">${t("realisations.back")}</button>
+      <div class="panel maintenance-story">
+        <h2>${t("maintenance.problem")}</h2>
+        <p>${tr(item.problem || "")}</p>
+        ${item.problemImage ? `<img src="${item.problemImage}" alt="Probleme" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;">` : ""}
+        <h2>${t("maintenance.solution")}</h2>
+        <p>${tr(item.solution || item.text || "")}</p>
+        ${item.solutionImage ? `<img src="${item.solutionImage}" alt="Solution" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;">` : ""}
+      </div>
+      <div class="timeline">${(item.history || []).map((row) => `
+        <article class="panel step-card">
+          <span>${row.date || ""}</span>
+          <div>
+            <h2>${tr(row.problem)}</h2>
+            <p>${tr(row.solution)}</p>
+            ${row.image ? `<img src="${row.image}" alt="Intervention" style="width:100%; max-width:500px; border-radius:8px; margin-top:16px;">` : ""}
+          </div>
+        </article>
+      `).join("")}</div>
+    </section>
+  `, "/services");
+}
+
+export function maintenanceRequestPage() {
+  publicShell(`
+    ${visualTitle("services", "Maintenance")}
+    <section class="section formation-only">
+      <form id="maintenance-form" class="panel form-panel">
+        <h2>${t("maintenance.questionnaire")}</h2>
+        ${requestIdentityFields()}
+        <label>${t("maintenance.purchasedFrom")}
+          <select name="purchasedFromDitona" data-maintenance-origin>
+            <option value="Oui">${t("maintenance.yes")}</option>
+            <option value="Non">${t("maintenance.no")}</option>
+          </select>
+        </label>
+        <label data-reference-field>${t("maintenance.reference")}<input name="reference" placeholder="${t("maintenance.referenceHelp")}"></label>
+        <label data-photo-field hidden>${t("maintenance.addPhoto")}<input name="photo" type="file" accept="image/*"></label>
+        <label>${t("maintenance.behavior")}<textarea name="behavior" rows="6" required placeholder="${t("maintenance.behaviorPlaceholder")}"></textarea></label>
+        <button class="primary" type="submit">${t("maintenance.submit")}</button>
+      </form>
+    </section>
+  `, "/services");
+  const origin = document.querySelector("[data-maintenance-origin]");
+  const reference = document.querySelector("[data-reference-field]");
+  const photo = document.querySelector("[data-photo-field]");
+  const toggle = () => {
+    const ditona = origin.value === "Oui";
+    reference.hidden = !ditona;
+    photo.hidden = ditona;
+  };
+  origin.addEventListener("change", toggle);
+  toggle();
+  document.querySelector("#maintenance-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    await addMaintenanceRequest({
+      id: "MNT-" + Date.now().toString().slice(-6),
+      name: fd.get("name"),
+      firstname: fd.get("firstname"),
+      phone: fd.get("phone"),
+      email: fd.get("email"),
+      purchasedFromDitona: fd.get("purchasedFromDitona"),
+      reference: fd.get("reference") || "",
+      photoName: fd.get("photo")?.name || "",
+      behavior: fd.get("behavior"),
+      subject: "Demande de maintenance",
+      status: "Nouveau",
+      reply: "",
+      seenAt: "",
+      createdAt: today(),
+    });
+    event.target.innerHTML = `<div class="success"><h2>${t("maintenance.submitted")}</h2><p>${t("maintenance.submittedMsg")}</p><button class="primary" data-link="/">Retour accueil</button></div>`;
+    window.ditonaBindGlobal();
+  });
 }
 
 export function formationPage() {
   publicShell(`
     ${visualTitle("formation", "Formation")}
+    <section class="section">
+      <div class="gallery-grid">${(data.formations || []).map((formation) => `
+        <article class="item-card click-card" data-link="/formation/${formation.id}">
+          <img src="${formation.image}" alt="${tr(formation.title)}">
+          <div class="item-body">
+            <span class="pill">${formation.available ? t("formations.available") : t("formations.unavailable")}</span>
+            <h3>${tr(formation.title)}</h3>
+            <p>${tr(formation.description)}</p>
+            <p class="comment">${tr(formation.duration || "")}</p>
+            <button class="primary small" ${formation.available ? `data-link="/formation/${formation.id}"` : "disabled"}>${t("formations.apply")}</button>
+          </div>
+        </article>
+      `).join("")}</div>
+    </section>
+  `, "/formation");
+}
+
+export function trainingApplyPage(id) {
+  const formation = (data.formations || []).find((row) => String(row.id) === String(id));
+  if (!formation) return formationPage();
+  publicShell(`
+    ${visualTitle("formation", "Formation")}
     <section class="section formation-only">
       <form id="formation-form" class="panel form-panel">
+        <h2>${t("formations.applyTitle")}: ${tr(formation.title)}</h2>
         ${requestIdentityFields()}
-        <label>Ce que vous voulez apprendre<input name="training" required placeholder="CNC, maintenance, automatisation..."></label>
+        <input name="training" type="hidden" value="${formation.title}">
         <label>Niveau actuel<select name="level"><option>Debutant</option><option>Intermediaire</option><option>Avance</option><option>Entreprise / equipe</option></select></label>
         <label>Objectif<textarea name="message" rows="5" required placeholder="Expliquez votre besoin, votre ville, le nombre de personnes"></textarea></label>
         <button class="primary" type="submit">Envoyer la demande de formation</button>
@@ -143,7 +287,6 @@ export async function loginPage() {
           <button class="ghost" type="button" data-customer-logout>Se deconnecter</button>
         </div>
       ` : `
-        <div class="login-grid">
         <form id="customer-login-form" class="panel form-panel">
           <h2>Se connecter</h2>
           <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
@@ -151,22 +294,30 @@ export async function loginPage() {
           <label class="check-line"><input type="checkbox" checked> Rester connecte</label>
           <button class="primary" type="submit">Se connecter</button>
           <button class="ghost" type="button" data-link="/forgot-password">Mot de passe oublie ?</button>
+          <p class="auth-switch">Pas encore de compte ? <button class="link-button" type="button" data-link="/signup">S'inscrire</button></p>
           <p class="form-message" data-login-message></p>
         </form>
-        <div class="login-stack">
-          <form id="buyer-signup-form" class="panel form-panel">
-            <h2>S'inscrire</h2>
-            <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
-            <label>Mot de passe<input name="password" type="password" required minlength="6"></label>
-            <label>Confirmer le mot de passe<input name="confirm" type="password" required minlength="6"></label>
-            <button class="primary" type="submit">S'inscrire</button>
-            <p class="form-message" data-buyer-message></p>
-          </form>
-        </div>
-      </div>
       `}
     </section>
   `, "/login");
+  bindCustomerAuth();
+}
+
+export function signupPage() {
+  publicShell(`
+    <section class="section login-public">
+      <div class="section-head"><div><p class="eyebrow">${t("signup.title")}</p><h1>${t("signup.title")}</h1></div></div>
+      <form id="buyer-signup-form" class="panel form-panel">
+        <h2>${t("signup.title")}</h2>
+        <label>${t("signup.email")}<input name="email" type="email" required placeholder="client@email.com"></label>
+        <label>${t("signup.password")}<input name="password" type="password" required minlength="6"></label>
+        <label>${t("signup.confirm")}<input name="confirm" type="password" required minlength="6"></label>
+        <button class="primary" type="submit">${t("signup.submit")}</button>
+        <button class="ghost" type="button" data-link="/login">${t("signup.back")}</button>
+        <p class="form-message" data-buyer-message></p>
+      </form>
+    </section>
+  `, "/signup");
   bindCustomerAuth();
 }
 
@@ -409,7 +560,8 @@ export function contactPage(subject = "") {
         <button class="primary" type="submit">Envoyer le message</button>
       </form>
       <aside class="panel contact-card">
-        <p><strong>Ingenieur DITONA</strong></p>
+        <p><strong>DITONA Engineering</strong></p>
+        <p><strong>${t("contacts.address")}:</strong> ${t("contacts.addressValue")}</p>
         <p>Email: <a href="mailto:ditonatg@gmail.com">ditonatg@gmail.com</a></p>
         <p>WhatsApp: <a href="https://wa.me/22870021225" target="_blank">+228 70 02 12 25</a></p>
       </aside>

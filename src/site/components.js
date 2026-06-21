@@ -16,7 +16,7 @@ export function setSlideTimer(timer) {
 export function logo(extra = "") {
   return `
     <div class="brand ${extra}">
-      <span class="logo-shell"><img src="/ditona-logo.png" alt="DITONA ENGINEERING"></span>
+      <span class="logo-shell"><img src="/ditona-logo.png" alt="DITONA Engineering"></span>
       <span class="brand-text">
         <strong>DITONA</strong>
         <small>Engineering</small>
@@ -30,8 +30,8 @@ export function navButton(label, path, active) {
 }
 
 export function mediaTag(item, alt = "DITONA") {
-  if (item?.type === "video") return `<video src="${item.image}" autoplay muted loop playsinline></video>`;
-  return `<img src="${item?.image}" alt="${escapeHtml(item?.title || alt)}">`;
+  if (item?.type === "video") return `<video src="${escapeHtml(item.image)}" autoplay muted loop playsinline></video>`;
+  return `<img src="${escapeHtml(item?.image || "")}" alt="${escapeHtml(item?.title || alt)}">`;
 }
 
 export function visualTitle(key, eyebrow) {
@@ -44,30 +44,35 @@ export function visualTitle(key, eyebrow) {
   `;
 }
 
+function languagePicker() {
+  const lang = currentLanguage();
+  return `
+    <label class="language-select" title="Langue">
+      ${lang === "zh" ? `<span class="flag-zh" aria-label="Chine"></span>` : `<span class="flag-${lang}"></span>`}
+      <select data-lang>
+        <option value="fr" ${lang === "fr" ? "selected" : ""}>Francais</option>
+        <option value="en" ${lang === "en" ? "selected" : ""}>English</option>
+        <option value="pt" ${lang === "pt" ? "selected" : ""}>Portugues</option>
+        <option value="zh" ${lang === "zh" ? "selected" : ""}>中文</option>
+      </select>
+    </label>
+  `;
+}
+
 export function publicShell(content, active = "") {
   clearTimers();
   const session = currentCustomer();
   const user = session?.user;
   const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "Client";
   const displayName = userName.split(" ")[0];
-  
+
   document.querySelector("#app").innerHTML = `
     <header class="site-header">
       <div class="site-header-row1">
-        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">
-          <span></span><span></span><span></span>
-        </button>
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
         <button class="nav-brand" data-link="/">${logo()}</button>
-        <label class="language-select" title="Langue">
-          ${currentLanguage() === "zh" ? "<span style=\"font-size:1.1rem;line-height:1\">🇨🇳</span>" : `<span class="flag-${currentLanguage()}"></span>`}
-          <select data-lang>
-            <option value="fr" ${currentLanguage() === "fr" ? "selected" : ""}>Francais</option>
-            <option value="en" ${currentLanguage() === "en" ? "selected" : ""}>English</option>
-            <option value="pt" ${currentLanguage() === "pt" ? "selected" : ""}>Portugues</option>
-            <option value="zh" ${currentLanguage() === "zh" ? "selected" : ""}>中文</option>
-          </select>
-        </label>
-        <button class="primary header-cta" data-link="/machines">${t("action.order")}</button>
+        <div class="header-spacer"></div>
+        ${languagePicker()}
         ${user ? `
           <button class="header-action user-connected" data-link="/login" title="Mon compte">
             <span class="user-icon"></span>
@@ -99,7 +104,7 @@ export function publicShell(content, active = "") {
     </header>
     <div class="mobile-nav-overlay" id="mobile-nav-overlay">
       <div class="mobile-nav-panel" id="mobile-nav-panel">
-        <button class="mobile-nav-close" id="mobile-nav-close">×</button>
+        <button class="mobile-nav-close" id="mobile-nav-close">x</button>
         ${navButton(t("nav.home"), "/", active)}
         ${navButton(t("nav.machines"), "/machines", active)}
         ${navButton(t("nav.realisations"), "/realisations", active)}
@@ -109,20 +114,13 @@ export function publicShell(content, active = "") {
         ${navButton(t("nav.appointment"), "/rendez-vous", active)}
         ${navButton(t("nav.contact"), "/contact", active)}
         <div class="mobile-nav-spacer"></div>
-        ${user ? `
-          <button class="mobile-login-link" data-link="/login">${escapeHtml(displayName)}</button>
-        ` : `
-          <button class="mobile-login-link" data-link="/login">${t("action.login")}</button>
-        `}
+        ${user ? `<button class="mobile-login-link" data-link="/login">${escapeHtml(displayName)}</button>` : `<button class="mobile-login-link" data-link="/login">${t("action.login")}</button>`}
       </div>
     </div>
     <main>${content}</main>
     ${chatWidget()}
     <footer class="site-footer">
-      <div class="footer-about">
-        ${logo("footer-brand")}
-        <p>${t("footer.about")}</p>
-      </div>
+      <div class="footer-about">${logo("footer-brand")}<p>${t("footer.about")}</p></div>
       <div class="footer-columns">
         <div>
           <h3>${t("footer.support")}</h3>
@@ -149,8 +147,10 @@ export function publicShell(content, active = "") {
     <div class="footer-contact-bar">
       <a href="mailto:ditonatg@gmail.com">ditonatg@gmail.com</a>
       <a href="https://wa.me/22870021225" target="_blank" rel="noopener">WhatsApp +228 70 02 12 25</a>
+      <span>Vakpossito Lome Togo</span>
     </div>
   `;
+
   setTimeout(() => {
     const hamburger = document.querySelector("#hamburger-btn");
     const overlay = document.querySelector("#mobile-nav-overlay");
@@ -159,8 +159,8 @@ export function publicShell(content, active = "") {
     const closeMenu = () => { overlay?.classList.remove("open"); document.body.style.overflow = ""; };
     hamburger?.addEventListener("click", openMenu);
     closeBtn?.addEventListener("click", closeMenu);
-    overlay?.addEventListener("click", (e) => { if (e.target === overlay) closeMenu(); });
-    overlay?.querySelectorAll("button[data-link]").forEach(btn => btn.addEventListener("click", closeMenu));
+    overlay?.addEventListener("click", (event) => { if (event.target === overlay) closeMenu(); });
+    overlay?.querySelectorAll("button[data-link]").forEach((button) => button.addEventListener("click", closeMenu));
   }, 0);
   translateDom(document.querySelector("#app"));
 }
@@ -170,12 +170,7 @@ function customerIdentity() {
   const user = session?.user;
   if (!user) return null;
   const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email || "Client connecte";
-  return {
-    name,
-    firstname: "",
-    email: user.email || "",
-    phone: "",
-  };
+  return { name, firstname: "", email: user.email || "", phone: "" };
 }
 
 export function requestIdentityFields() {
@@ -200,13 +195,8 @@ export function chatWidget() {
   return `
     <button class="chat-button" data-chat-open>${t("chat.button")}</button>
     <section class="chat-widget" hidden>
-      <div class="chat-head">
-        <strong>${t("chat.title")}</strong>
-        <button data-chat-close aria-label="Fermer">×</button>
-      </div>
-      <div class="chat-log" data-chat-log>
-        <p class="bot">${t("chat.hello")}</p>
-      </div>
+      <div class="chat-head"><strong>${t("chat.title")}</strong><button data-chat-close aria-label="Fermer">x</button></div>
+      <div class="chat-log" data-chat-log><p class="bot">${t("chat.hello")}</p></div>
       <form class="chat-form" data-chat-form>
         <input name="text" required placeholder="${t("chat.input")}">
         <button class="primary small">${t("chat.send")}</button>
@@ -219,10 +209,7 @@ export function machineMini(machine) {
   return `
     <article class="machine-mini">
       <img src="${machine.image}" alt="${escapeHtml(tr(machine.name))}">
-      <div>
-        <strong>${escapeHtml(tr(machine.name))}</strong>
-        <span>${escapeHtml(tr(machine.comment))}</span>
-      </div>
+      <div><strong>${escapeHtml(tr(machine.name))}</strong><span>${escapeHtml(tr(machine.comment))}</span></div>
     </article>
   `;
 }
@@ -250,7 +237,7 @@ export function orderForm(machine) {
     <section class="modal-backdrop" data-modal>
       <form id="order-form" class="panel form-panel order-modal">
         <div class="modal-head">
-          <div><p class="eyebrow">Commande</p><h2>${escapeHtml(machine.name)}</h2></div>
+          <div><p class="eyebrow">Commande</p><h2>${escapeHtml(tr(machine.name))}</h2></div>
           <button type="button" class="ghost small" data-close-modal>Fermer</button>
         </div>
         ${requestIdentityFields()}
@@ -262,21 +249,15 @@ export function orderForm(machine) {
 }
 
 export function realisationCard(item) {
-  const rating = Math.max(0, Math.min(5, item.rating == null ? 5 : Number(item.rating) || 0));
-  const stars = Array.from({ length: 5 }, (_, index) => `<span class="${index < rating ? "filled" : ""}">&#9733;</span>`).join("");
   return `
-    <article class="item-card">
+    <article class="item-card click-card" data-link="/realisations/${item.id}">
       <img src="${item.image}" alt="${escapeHtml(tr(item.title))}">
       <div class="item-body">
         <h3>${escapeHtml(tr(item.title))}</h3>
-        <p>${escapeHtml(tr(item.comment))}</p>
-        <div class="review-block">
-          <div class="stars" aria-label="${rating} etoiles">${stars}</div>
-          <p>${escapeHtml(tr(item.review || t("review.default")))}</p>
-        </div>
+        <p>${escapeHtml(tr(item.comment || item.description || ""))}</p>
         <div class="item-foot">
-          <strong>${money(item.price)}</strong>
-          <button class="ghost small" data-quote="${escapeHtml(item.title)}">${t("quote")}</button>
+          <span class="pill">${t("realisations.steps")}</span>
+          <button class="ghost small" data-link="/realisations/${item.id}">${t("realisations.viewDetails")}</button>
         </div>
       </div>
     </article>
@@ -285,12 +266,12 @@ export function realisationCard(item) {
 
 export function serviceCard(service) {
   return `
-    <article class="service-card">
+    <article class="service-card click-card" data-link="/services/${service.id}">
       <img src="${service.image}" alt="${escapeHtml(tr(service.title))}">
       <div>
         <h3>${escapeHtml(tr(service.title))}</h3>
-        <p>${escapeHtml(tr(service.text))}</p>
-        <button class="primary small" data-quote="${escapeHtml(service.title)}">${t("ask")}</button>
+        <p>${escapeHtml(tr(service.text || service.solution || ""))}</p>
+        <button class="primary small" data-link="/services/${service.id}">${t("realisations.viewDetails")}</button>
       </div>
     </article>
   `;
@@ -298,12 +279,12 @@ export function serviceCard(service) {
 
 export function adminItem(item, type) {
   const preview = item.type === "video"
-    ? `<video src="${item.image}" muted loop playsinline></video>`
-    : `<img src="${item.image}" alt="${escapeHtml(item.name || item.title)}">`;
+    ? `<video src="${escapeHtml(item.image || "")}" muted loop playsinline></video>`
+    : `<img src="${escapeHtml(item.image || "")}" alt="${escapeHtml(item.name || item.title || "")}">`;
   return `
     <article class="admin-row">
       ${preview}
-      <div><h3>${escapeHtml(item.name || item.title)}</h3><p>${escapeHtml(item.category || item.cta || "")} ${money(item.price)}</p><p>${escapeHtml(item.comment || item.subtitle || item.description || "")}</p></div>
+      <div><h3>${escapeHtml(item.name || item.title || "")}</h3><p>${escapeHtml(item.category || item.cta || item.status || "")} ${money(item.price)}</p><p>${escapeHtml(item.comment || item.subtitle || item.description || item.text || "")}</p></div>
       <button class="ghost small" data-edit-${type}="${item.id}">Modifier</button>
       <button class="danger small" data-delete-${type}="${item.id}">Supprimer</button>
     </article>
@@ -316,10 +297,7 @@ export function requestCard(item, type) {
   const reply = item.reply || "";
   return `
     <article class="panel request-card">
-      <div class="request-top">
-        <h3>${escapeHtml(title)}</h3>
-        <span class="status-pill">${escapeHtml(item.status || "Nouveau")}</span>
-      </div>
+      <div class="request-top"><h3>${escapeHtml(title)}</h3><span class="status-pill">${escapeHtml(item.status || "Nouveau")}</span></div>
       <p><strong>${escapeHtml(item.name || item.client || "Client web")}</strong> | ${escapeHtml(item.email || "")} | ${escapeHtml(item.phone || "")}</p>
       <p>${escapeHtml(item.message || item.note || "")}</p>
       ${item.autoReply ? `<p class="auto-reply"><strong>Reponse automatique:</strong> ${escapeHtml(item.autoReply)}</p>` : ""}
@@ -333,8 +311,13 @@ export function requestCard(item, type) {
 export function requestConversation(items = [], type) {
   if (!items.length) return `<p class="empty">Aucune demande.</p>`;
   const active = items[0];
-  const rows = items.map((item, index) => {
-    const title = item.subject || item.machine || item.training || "Demande";
+  const rows = requestRows(items, type);
+  return `<section class="message-desk request-desk"><aside class="message-list">${rows}</aside><article class="message-thread" data-request-thread>${requestThread(active, type)}</article></section>`;
+}
+
+function requestRows(items, type) {
+  return items.map((item, index) => {
+    const title = item.subject || item.machine || item.training || item.reference || "Demande";
     const client = item.client || `${item.name || ""} ${item.firstname || ""}`.trim() || "Client web";
     const contact = [item.phone, item.email].filter(Boolean).join(" | ");
     return `
@@ -345,18 +328,12 @@ export function requestConversation(items = [], type) {
       </button>
     `;
   }).join("");
-  return `
-    <section class="message-desk request-desk">
-      <aside class="message-list">${rows}</aside>
-      <article class="message-thread" data-request-thread>${requestThread(active, type)}</article>
-    </section>
-  `;
 }
 
 export function requestThread(item, type) {
   if (!item) return `<p class="empty">Selectionnez une demande.</p>`;
   const id = item.id;
-  const title = item.subject || item.machine || item.training || "Demande";
+  const title = item.subject || item.machine || item.training || item.reference || "Demande";
   const client = item.client || `${item.name || ""} ${item.firstname || ""}`.trim() || "Client web";
   const contact = [item.phone, item.email].filter(Boolean).join(" | ");
   const details = [
@@ -365,19 +342,19 @@ export function requestThread(item, type) {
     item.date ? `Date souhaitee: ${item.date}` : "",
     item.level ? `Niveau: ${item.level}` : "",
     item.training ? `Formation: ${item.training}` : "",
+    item.purchasedFromDitona ? `Machine achetee chez DITONA: ${item.purchasedFromDitona}` : "",
+    item.reference ? `Reference: ${item.reference}` : "",
+    item.photoName ? `Photo: ${item.photoName}` : "",
   ].filter(Boolean);
   const reply = item.reply || "";
   return `
     <div class="thread-head">
-      <div>
-        <h2>${escapeHtml(title)}</h2>
-        <p><strong>${escapeHtml(client)}</strong>${contact ? ` | ${escapeHtml(contact)}` : ""}</p>
-      </div>
+      <div><h2>${escapeHtml(title)}</h2><p><strong>${escapeHtml(client)}</strong>${contact ? ` | ${escapeHtml(contact)}` : ""}</p></div>
       <small>${escapeHtml(item.createdAt || "")}</small>
     </div>
     <div class="thread-chat">
       ${details.length ? `<div class="request-meta">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("")}</div>` : ""}
-      <p class="bubble client">${escapeHtml(item.message || item.note || "Demande creee depuis le site.")}</p>
+      <p class="bubble client">${escapeHtml(item.message || item.note || item.behavior || "Demande creee depuis le site.")}</p>
       ${reply ? `<p class="bubble admin">${escapeHtml(reply)}</p>` : ""}
     </div>
     <label class="reply-box">Reponse admin<textarea data-${type}-reply="${id}" rows="5" placeholder="Ecrire la reponse...">${escapeHtml(reply)}</textarea></label>
@@ -391,30 +368,12 @@ export function requestThread(item, type) {
 export function requestConversationSimple(items = [], type) {
   if (!items.length) return `<p class="empty">Aucune demande.</p>`;
   const active = items[0];
-  const rows = items.map((item, index) => {
-    const title = item.subject || item.machine || item.training || "Demande";
-    const client = item.client || `${item.name || ""} ${item.firstname || ""}`.trim() || "Client web";
-    const contact = [item.phone, item.email].filter(Boolean).join(" | ");
-    return `
-      <button class="message-user ${index === 0 ? "active" : ""}" data-request-select="${type}:${item.id}">
-        <strong>${escapeHtml(title)}</strong>
-        <span>${escapeHtml(client)}</span>
-        <small>${escapeHtml(contact)}</small>
-      </button>
-    `;
-  }).join("");
-  return `
-    <section class="message-desk request-desk">
-      <aside class="message-list">${rows}</aside>
-      <article class="message-thread" data-request-thread>${requestThreadSimple(active, type)}</article>
-    </section>
-  `;
+  return `<section class="message-desk request-desk"><aside class="message-list">${requestRows(items, type)}</aside><article class="message-thread" data-request-thread>${requestThreadSimple(active, type)}</article></section>`;
 }
 
 export function requestThreadSimple(item, type) {
   if (!item) return `<p class="empty">Selectionnez une demande.</p>`;
-  const id = item.id;
-  const title = item.subject || item.machine || item.training || "Demande";
+  const title = item.subject || item.machine || item.training || item.reference || "Demande";
   const client = item.client || `${item.name || ""} ${item.firstname || ""}`.trim() || "Client web";
   const contact = [item.phone, item.email].filter(Boolean).join(" | ");
   const details = [
@@ -423,19 +382,18 @@ export function requestThreadSimple(item, type) {
     item.date ? `Date souhaitee: ${item.date}` : "",
     item.level ? `Niveau: ${item.level}` : "",
     item.training ? `Formation: ${item.training}` : "",
+    item.purchasedFromDitona ? `Machine achetee chez DITONA: ${item.purchasedFromDitona}` : "",
+    item.reference ? `Reference: ${item.reference}` : "",
+    item.photoName ? `Photo: ${item.photoName}` : "",
   ].filter(Boolean);
-  
   return `
     <div class="thread-head">
-      <div>
-        <h2>${escapeHtml(title)}</h2>
-        <p><strong>${escapeHtml(client)}</strong>${contact ? ` | ${escapeHtml(contact)}` : ""}</p>
-      </div>
+      <div><h2>${escapeHtml(title)}</h2><p><strong>${escapeHtml(client)}</strong>${contact ? ` | ${escapeHtml(contact)}` : ""}</p></div>
       <small>${escapeHtml(item.createdAt || "")}</small>
     </div>
     <div class="thread-chat">
       ${details.length ? `<div class="request-meta">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("")}</div>` : ""}
-      <p class="bubble client">${escapeHtml(item.message || item.note || "Demande creee depuis le site.")}</p>
+      <p class="bubble client">${escapeHtml(item.message || item.note || item.behavior || "Demande creee depuis le site.")}</p>
     </div>
     <div class="thread-actions">
       ${item.email ? `<a class="primary" href="mailto:${escapeHtml(item.email)}">Contacter par email</a>` : ""}
@@ -454,22 +412,14 @@ export function messageConversation(messages = []) {
       <span>${escapeHtml(item.subject || "Message")}</span>
     </button>
   `).join("");
-  return `
-    <section class="message-desk">
-      <aside class="message-list">${rows}</aside>
-      <article class="message-thread" data-message-thread>${messageThread(active)}</article>
-    </section>
-  `;
+  return `<section class="message-desk"><aside class="message-list">${rows}</aside><article class="message-thread" data-message-thread>${messageThread(active)}</article></section>`;
 }
 
 export function messageThread(item) {
   if (!item) return `<p class="empty">Selectionnez un message.</p>`;
   return `
     <div class="thread-head">
-      <div>
-        <h2>${escapeHtml(item.name || item.client || "Visiteur")}</h2>
-        <p>${escapeHtml([item.email, item.phone].filter(Boolean).join(" | ") || "Client web")}</p>
-      </div>
+      <div><h2>${escapeHtml(item.name || item.client || "Visiteur")}</h2><p>${escapeHtml([item.email, item.phone].filter(Boolean).join(" | ") || "Client web")}</p></div>
       <small>${escapeHtml(item.createdAt || "")}</small>
     </div>
     <div class="thread-chat">
@@ -487,17 +437,18 @@ export function messageThread(item) {
 export function dashboardActivity() {
   const rows = [
     ...data.messages.map((item) => ({ type: "Message", title: item.subject || "Chatbot", name: item.name || "Visiteur", status: item.status })),
-    ...data.appointments.map((item) => ({ type: "Rendez-vous", title: item.subject || item.date || "Demande"})),
+    ...data.appointments.map((item) => ({ type: "Rendez-vous", title: item.subject || item.date || "Demande", name: item.name, status: item.status })),
     ...data.orders.map((item) => ({ type: "Achat", title: item.machine, name: item.client, status: item.status })),
     ...(data.trainingRequests || []).map((item) => ({ type: "Formation", title: item.subject || item.training, name: item.name, status: item.status })),
-  ].slice(0, 6);
+    ...(data.maintenanceRequests || []).map((item) => ({ type: "Maintenance", title: item.subject || item.reference || "Maintenance", name: item.name, status: item.status })),
+  ].slice(0, 8);
   if (!rows.length) return `<p class="empty">Aucune activite recente pour le moment.</p>`;
   return rows.map((row) => `
     <article class="activity-row">
       <span>${row.type}</span>
-      <strong>${escapeHtml(row.title)}</strong>
+      <strong>${escapeHtml(row.title || "")}</strong>
       <em>${escapeHtml(row.name || "Client web")}</em>
-      <small>${escapeHtml(row.status)}</small>
+      <small>${escapeHtml(row.status || "Nouveau")}</small>
     </article>
   `).join("");
 }
