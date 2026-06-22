@@ -1,5 +1,5 @@
 import { adminItem, clearTimers, dashboardActivity, logo, messageConversation, requestConversation, requestConversationSimple } from "./components.js";
-import { countNew } from "./format.js";
+import { countNew, escapeHtml } from "./format.js";
 import { data, getAdminPassword, isAdminLoggedIn, loginAdmin, logoutAdmin, saveData, setAdminPassword, today, updateOrder, updateMessage, updateAppointment, updateTrainingRequest, deleteOrder, deleteMessage, deleteAppointment, deleteTrainingRequest, deleteMaintenanceRequest, loadRemoteData, uploadMediaFile } from "./store.js";
 
 const ADMIN_BASE = "/27ditona@ad07";
@@ -82,8 +82,9 @@ export function adminShell(content, active = "dashboard") {
         ${adminNav("Medias sections", `${ADMIN_BASE}/sections`, active, "sections")}
         ${adminNav("Machines", `${ADMIN_BASE}/machines`, active, "machines")}
         ${adminNav("Nos Realisations", `${ADMIN_BASE}/realisations`, active, "realisations")}
-        ${adminNav("Maintenance", `${ADMIN_BASE}/services`, active, "services", counts.maintenance)}
+        ${adminNav("Maintenances", `${ADMIN_BASE}/services`, active, "services", counts.maintenance)}
         ${adminNav("Formations", `${ADMIN_BASE}/formations`, active, "formations", counts.training)}
+        ${adminNav("Publicites", `${ADMIN_BASE}/ads`, active, "ads")}
         ${adminNav("Rendez-vous", `${ADMIN_BASE}/appointments`, active, "appointments", counts.appointments)}
         ${adminNav("Achats", `${ADMIN_BASE}/orders`, active, "orders", counts.orders)}
         ${adminNav("Messages", `${ADMIN_BASE}/messages`, active, "messages", counts.messages)}
@@ -199,6 +200,7 @@ export function adminMachines() {
       <label>Nom<input name="name" required></label>
       <label>Categorie<input name="category" required></label>
       <label>Prix FCFA<input name="price" type="number"></label>
+      <label>Reduction %<input name="discountPercent" type="number" min="0" max="100" placeholder="0"></label>
       <label>Statut<input name="status"></label>
       <label>Description<textarea name="description" rows="3" required></textarea></label>
       <label>Commentaire<textarea name="comment" rows="3"></textarea></label>
@@ -210,6 +212,36 @@ export function adminMachines() {
     <div class="admin-list">${data.machines.map((m) => adminItem(m, "machine")).join("")}</div>
   `, "machines");
   bindMachineForm();
+}
+
+export function adminAds() {
+  if (!requireAdmin()) return;
+  adminShell(`
+    <div class="admin-head"><p class="eyebrow">Publicites</p><h1>Pubs animees du site</h1><p>Ajoutez des images ou videos qui apparaissent dans l'angle du site.</p></div>
+    <form id="ad-form" class="panel admin-form">
+      <h2>Reglage global des publicites</h2>
+      <label>Temps visible avant disparition (ms)<input name="globalVisibleMs" type="number" min="5000" step="1000" value="${Number(data.adsSettings?.visibleMs) || 22000}"></label>
+      <label>Temps cache avant reapparition (ms)<input name="globalHiddenMs" type="number" min="3000" step="1000" value="${Number(data.adsSettings?.hiddenMs) || 18000}"></label>
+      <hr>
+      <h2>Image ou video publicitaire</h2>
+      <input name="id" type="hidden">
+      <label>Titre<input name="title" required></label>
+      <label>Texte court<textarea name="text" rows="2"></textarea></label>
+      <label>Description detaillee<textarea name="description" rows="4" placeholder="Details de l'offre, conditions, informations utiles"></textarea></label>
+      <label>Localisation<input name="location" placeholder="Ville, quartier, adresse ou lieu de vente"></label>
+      <label>Numero WhatsApp commande<input name="whatsapp" placeholder="+228 ..."></label>
+      <label>Type<select name="type"><option>image</option><option>video</option></select></label>
+      <label>Texte bouton<input name="cta" placeholder="Commander maintenant"></label>
+      <label>Temps de chaque image/video (ms)<input name="displayMs" type="number" min="1500" step="500" placeholder="7000"></label>
+      <label>Active<select name="active"><option value="true">Oui</option><option value="false">Non</option></select></label>
+      <label>Media<input name="imageFile" type="file" accept="image/*,video/*"></label>
+      <input name="image" placeholder="URL image ou video">
+      <button class="primary">Enregistrer la pub</button>
+      <button class="ghost" type="reset">Nouvelle pub</button>
+    </form>
+    <div class="admin-list">${(data.ads || []).map((ad) => adminItem({ ...ad, name: ad.title, comment: ad.text, status: ad.active === false ? "Inactive" : "Active" }, "ad")).join("")}</div>
+  `, "ads");
+  bindAdForm();
 }
 
 // MODIFIÉ - Formulaire Réalisations avec images pour chaque étape
@@ -241,7 +273,7 @@ export function adminRealisations() {
 export function adminServices() {
   if (!requireAdmin()) return;
   adminShell(`
-    <div class="admin-head"><p class="eyebrow">Maintenance</p><h1>Services de maintenance</h1></div>
+    <div class="admin-head"><p class="eyebrow">Maintenances</p><h1>Services de maintenances</h1></div>
     <form id="service-form" class="panel admin-form">
       <input name="id" type="hidden">
       <label>Titre<input name="title" required></label>
@@ -453,9 +485,42 @@ function bindMachineForm() {
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = data.machines.find((m) => m.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "machines");
-    const next = { id, name: fd.get("name"), category: fd.get("category"), price: Number(fd.get("price")) || null, status: fd.get("status"), description: fd.get("description"), comment: fd.get("comment"), image };
+    const next = { id, name: fd.get("name"), category: fd.get("category"), price: Number(fd.get("price")) || null, discountPercent: Math.max(0, Math.min(100, Number(fd.get("discountPercent")) || 0)), status: fd.get("status"), description: fd.get("description"), comment: fd.get("comment"), image };
     data.machines = existing ? data.machines.map((m) => m.id === id ? next : m) : [next, ...data.machines];
     await persistAdminData(adminMachines);
+    });
+  });
+}
+
+function bindAdForm() {
+  const form = document.querySelector("#ad-form");
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await submitAdminForm(async () => {
+      data.ads = data.ads || [];
+      const fd = new FormData(form);
+      const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
+      const existing = data.ads.find((ad) => ad.id === id);
+      const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "ads");
+      data.adsSettings = {
+        visibleMs: Number(fd.get("globalVisibleMs")) || 22000,
+        hiddenMs: Number(fd.get("globalHiddenMs")) || 18000,
+      };
+      const next = {
+        id,
+        title: fd.get("title"),
+        text: fd.get("text"),
+        description: fd.get("description"),
+        location: fd.get("location"),
+        whatsapp: fd.get("whatsapp"),
+        type: fd.get("type"),
+        cta: fd.get("cta") || "Commander maintenant",
+        displayMs: Number(fd.get("displayMs")) || 7000,
+        active: fd.get("active") === "true",
+        image,
+      };
+      data.ads = existing ? data.ads.map((ad) => ad.id === id ? next : ad) : [next, ...data.ads];
+      await persistAdminData(adminAds);
     });
   });
 }
@@ -477,26 +542,25 @@ function bindRealisationForm() {
         <h4>Etape ${stepIndex + 1}</h4>
         <button type="button" class="danger small" onclick="this.closest('.step-entry').remove()">Supprimer</button>
       </div>
-      <label>Titre<input name="step-title-${stepIndex}" value="${step.title || ""}"></label>
-      <label>Description<textarea name="step-description-${stepIndex}" rows="2">${step.description || ""}</textarea></label>
+      <label>Titre<input name="step-title-${stepIndex}" value="${escapeHtml(step.title || "")}"></label>
+      <label>Description<textarea name="step-description-${stepIndex}" rows="2">${escapeHtml(step.description || "")}</textarea></label>
       <label>Image<input name="step-image-file-${stepIndex}" type="file" accept="image/*"></label>
-      <input name="step-image-${stepIndex}" placeholder="URL image etape" value="${step.image || ""}">
-      ${step.image ? `<img src="${step.image}" style="max-width:150px; margin-top:8px; border-radius:6px;">` : ""}
+      <input name="step-image-${stepIndex}" placeholder="URL image etape" value="${escapeHtml(step.image || "")}">
+      ${step.image ? `<img src="${escapeHtml(step.image)}" style="max-width:150px; margin-top:8px; border-radius:6px;">` : ""}
     `;
     stepsContainer.appendChild(stepDiv);
+  }
+  function loadSteps(item = {}) {
+    stepsContainer.innerHTML = "";
+    (item.steps || []).forEach(step => addStep(step));
   }
   
   // Bouton ajouter étape
   addStepBtn?.addEventListener("click", () => addStep());
   
   // Charger les étapes existantes si modification
-  const idInput = form.querySelector('input[name="id"]');
-  if (idInput.value) {
-    const existing = data.realisations.find(r => r.id === Number(idInput.value));
-    if (existing?.steps) {
-      existing.steps.forEach(step => addStep(step));
-    }
-  }
+  form.addEventListener("ditona:fill", (event) => loadSteps(event.detail || {}));
+  form.addEventListener("reset", () => setTimeout(() => stepsContainer.innerHTML = "", 0));
   
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -509,7 +573,8 @@ function bindRealisationForm() {
       // Collecter toutes les étapes
       const steps = [];
       const stepEntries = stepsContainer.querySelectorAll(".step-entry");
-      for (let i = 0; i < stepEntries.length; i++) {
+      for (const entry of stepEntries) {
+        const i = entry.dataset.index;
         const title = fd.get(`step-title-${i}`);
         const description = fd.get(`step-description-${i}`);
         const imageInput = form.querySelector(`input[name="step-image-file-${i}"]`);
@@ -569,27 +634,26 @@ function bindServiceForm() {
         <h4>Intervention ${entryIndex + 1}</h4>
         <button type="button" class="danger small" onclick="this.closest('.history-entry').remove()">Supprimer</button>
       </div>
-      <label>Date<input name="history-date-${entryIndex}" type="date" value="${entry.date || ""}"></label>
-      <label>Probleme<textarea name="history-problem-${entryIndex}" rows="2">${entry.problem || ""}</textarea></label>
-      <label>Solution<textarea name="history-solution-${entryIndex}" rows="2">${entry.solution || ""}</textarea></label>
+      <label>Date<input name="history-date-${entryIndex}" type="date" value="${escapeHtml(entry.date || "")}"></label>
+      <label>Probleme<textarea name="history-problem-${entryIndex}" rows="2">${escapeHtml(entry.problem || "")}</textarea></label>
+      <label>Solution<textarea name="history-solution-${entryIndex}" rows="2">${escapeHtml(entry.solution || "")}</textarea></label>
       <label>Image<input name="history-image-file-${entryIndex}" type="file" accept="image/*"></label>
-      <input name="history-image-${entryIndex}" placeholder="URL image" value="${entry.image || ""}">
-      ${entry.image ? `<img src="${entry.image}" style="max-width:150px; margin-top:8px; border-radius:6px;">` : ""}
+      <input name="history-image-${entryIndex}" placeholder="URL image" value="${escapeHtml(entry.image || "")}">
+      ${entry.image ? `<img src="${escapeHtml(entry.image)}" style="max-width:150px; margin-top:8px; border-radius:6px;">` : ""}
     `;
     historyContainer.appendChild(entryDiv);
+  }
+  function loadHistory(item = {}) {
+    historyContainer.innerHTML = "";
+    (item.history || []).forEach(entry => addHistory(entry));
   }
   
   // Bouton ajouter intervention
   addHistoryBtn?.addEventListener("click", () => addHistory());
   
   // Charger les interventions existantes si modification
-  const idInput = form.querySelector('input[name="id"]');
-  if (idInput.value) {
-    const existing = (data.maintenanceServices || []).find(s => s.id === Number(idInput.value));
-    if (existing?.history) {
-      existing.history.forEach(entry => addHistory(entry));
-    }
-  }
+  form.addEventListener("ditona:fill", (event) => loadHistory(event.detail || {}));
+  form.addEventListener("reset", () => setTimeout(() => historyContainer.innerHTML = "", 0));
   
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -611,7 +675,8 @@ function bindServiceForm() {
       // Collecter toutes les interventions
       const history = [];
       const historyEntries = historyContainer.querySelectorAll(".history-entry");
-      for (let i = 0; i < historyEntries.length; i++) {
+      for (const entry of historyEntries) {
+        const i = entry.dataset.index;
         const date = fd.get(`history-date-${i}`);
         const problem = fd.get(`history-problem-${i}`);
         const solution = fd.get(`history-solution-${i}`);
@@ -693,9 +758,11 @@ function injectDeleteButtons(type) {
 
 export function fillForm(formId, item) {
   const form = document.querySelector(formId);
+  if (!form || !item) return;
   Object.entries(item).forEach(([key, value]) => {
     if (form[key] && key !== "imageFile") form[key].value = value ?? "";
   });
+  form.dispatchEvent(new CustomEvent("ditona:fill", { detail: item }));
   form.scrollIntoView({ behavior: "smooth" });
 }
 

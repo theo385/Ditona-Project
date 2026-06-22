@@ -625,6 +625,28 @@ img { display: block; max-width: 100%; }
 
 .item-foot strong { color: var(--ink); }
 
+.price-stack {
+  display: grid;
+  gap: 4px;
+  align-items: start;
+}
+
+.price-stack del {
+  color: var(--muted);
+  font-size: .86rem;
+  font-weight: 750;
+}
+
+.discount-badge {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: white;
+  background: #d61f69;
+  font-size: .72rem;
+  font-weight: 900;
+}
+
 .review-block {
   display: grid;
   gap: 6px;
@@ -739,6 +761,32 @@ label {
   gap: 16px;
 }
 
+.choice-group {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.choice-group legend {
+  padding: 0 6px;
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.check-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.check-line input[type="radio"],
+.check-line input[type="checkbox"] {
+  width: auto;
+  min-height: 0;
+}
+
 .success { padding: 34px; text-align: center; }
 
 .chat-button {
@@ -753,6 +801,179 @@ label {
   background: var(--green);
   box-shadow: 0 18px 40px rgba(8,127,91,.28);
   font-weight: 850;
+}
+
+.floating-ads {
+  position: fixed;
+  right: 22px;
+  bottom: 88px;
+  z-index: 79;
+  width: min(310px, calc(100vw - 32px));
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .28s ease, transform .28s ease;
+}
+
+.floating-ads.visible {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.floating-ad {
+  position: relative;
+  display: none;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 22px 60px rgba(16,36,58,.24);
+}
+
+.floating-ad.active {
+  display: grid;
+  animation: fadeIn .28s ease;
+}
+
+.floating-ad img,
+.floating-ad video {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+}
+
+.floating-ad div {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.floating-ad strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.floating-ad p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.floating-ad [data-close-ad] {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.floating-ad-controls {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  pointer-events: auto;
+}
+
+.floating-ad-controls > button {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  background: white;
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 24px rgba(16,36,58,.14);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.floating-ad-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+}
+
+.floating-ad-dots button {
+  width: 9px;
+  height: 9px;
+  min-height: 9px;
+  padding: 0;
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+.floating-ad-dots button.active {
+  width: 24px;
+  background: linear-gradient(135deg, var(--green), var(--green-2));
+}
+
+.ad-detail-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
+  gap: clamp(22px, 4vw, 56px);
+  align-items: center;
+  min-height: calc(100vh - 120px);
+  padding: clamp(32px, 6vw, 82px) clamp(16px, 5vw, 76px);
+  background: var(--surface);
+}
+
+.ad-detail-media {
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--ink);
+  box-shadow: 0 24px 70px rgba(16,36,58,.16);
+}
+
+.ad-detail-media img,
+.ad-detail-media video {
+  width: 100%;
+  height: min(62vh, 560px);
+  object-fit: cover;
+}
+
+.ad-detail-content {
+  display: grid;
+  gap: 16px;
+}
+
+.ad-detail-content h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 4.2rem);
+  line-height: 1;
+}
+
+.ad-detail-content p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.ad-location {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.ad-location span {
+  color: var(--muted);
+}
+
+.ad-whatsapp {
+  width: fit-content;
 }
 
 .chat-widget {
@@ -1735,6 +1956,10 @@ body.admin-mode {
     grid-template-columns: 1fr;
   }
 
+  .ad-detail-hero {
+    grid-template-columns: 1fr;
+  }
+
   .login-grid {
     grid-template-columns: 1fr;
   }
@@ -1892,6 +2117,63 @@ body.admin-mode {
   .visual-title h1 { font-size: clamp(1.8rem, 10vw, 3rem); }
   .hero-brand .logo-shell { width: 60px; height: 60px; }
   .step-card { grid-template-columns: 1fr; }
+
+  .floating-ads {
+    right: 10px;
+    bottom: 74px;
+    width: min(250px, calc(100vw - 20px));
+  }
+
+  .floating-ad img,
+  .floating-ad video {
+    height: 92px;
+  }
+
+  .floating-ad div {
+    gap: 6px;
+    padding: 9px;
+  }
+
+  .floating-ad strong {
+    font-size: .88rem;
+  }
+
+  .floating-ad p {
+    font-size: .78rem;
+    line-height: 1.25;
+  }
+
+  .floating-ad .primary {
+    min-height: 32px;
+    padding: 6px 9px;
+    font-size: .78rem;
+  }
+
+  .floating-ad-controls {
+    grid-template-columns: 30px minmax(0, 1fr) 30px;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .floating-ad-controls > button {
+    width: 30px;
+    height: 30px;
+    min-height: 30px;
+  }
+
+  .ad-detail-hero {
+    min-height: auto;
+    padding: 24px 12px 92px;
+  }
+
+  .ad-detail-media img,
+  .ad-detail-media video {
+    height: 260px;
+  }
+
+  .ad-whatsapp {
+    width: 100%;
+  }
 }
 
 @media (max-width: 380px) {
@@ -2298,5 +2580,73 @@ button:disabled {
   .step-item img,
   .history-item img {
     height: 180px;
+  }
+}
+/* Formulaire maintenance - Radio buttons */
+input[type="radio"][data-maintenance-origin] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--green);
+}
+
+[data-reference-field],
+[data-photo-field] {
+  display: block;
+  transition: all 0.3s ease;
+  margin-top: 16px;
+  opacity: 1;
+  max-height: 500px;
+  overflow: hidden;
+}
+
+[data-reference-field][hidden],
+[data-photo-field][hidden] {
+  display: none !important;
+  opacity: 0;
+  max-height: 0;
+  margin: 0;
+  padding: 0;
+  visibility: hidden;
+}
+
+/* Responsive mobile */
+@media (max-width: 680px) {
+  .formation-only .form-panel {
+    padding: 16px;
+  }
+  
+  .formation-only .form-panel h2 {
+    font-size: 1.3rem;
+  }
+  
+  /* Radio buttons plus grands sur mobile */
+  input[type="radio"][data-maintenance-origin] {
+    width: 24px;
+    height: 24px;
+  }
+  
+  /* Texte plus grand pour éviter le zoom iOS */
+  .formation-only .form-panel label strong {
+    font-size: 16px;
+  }
+  
+  .formation-only .form-panel input,
+  .formation-only .form-panel select,
+  .formation-only .form-panel textarea {
+    font-size: 16px;
+  }
+  
+  /* Espacement radio buttons mobile */
+  .formation-only .form-panel label div {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .formation-only .form-panel label div label {
+    width: 100%;
+    padding: 12px;
+    background: var(--surface);
+    border-radius: 8px;
   }
 }

@@ -1,10 +1,13 @@
 const LANG_KEY = "ditona_site_language";
+const TRANSLATION_CACHE_KEY = "ditona_translation_cache_v1";
+export const SUPPORTED_LANGUAGES = ["fr", "en", "pt", "zh"];
+const AUTO_TRANSLATION_LANGUAGES = SUPPORTED_LANGUAGES.filter((lang) => lang !== "fr");
 const dictionaries = {
   fr: {
     "nav.home": "Accueil",
     "nav.machines": "Machines",
     "nav.realisations": "Nos Realisations",
-    "nav.services": "Maintenance",
+    "nav.services": "Maintenances",
     "nav.training": "Nos Formations",
     "nav.about": "A propos",
     "nav.appointment": "Rendez-vous",
@@ -37,14 +40,14 @@ const dictionaries = {
     "realisations.steps": "Etapes de realisation",
     "realisations.viewDetails": "Voir les details",
     "realisations.back": "Retour aux realisations",
-    "maintenance.title": "Maintenance",
+    "maintenance.title": "Maintenances",
     "maintenance.subtitle": "Services de maintenance et depannage industriel",
     "maintenance.history": "Historique des interventions",
     "maintenance.problem": "Probleme rencontre",
     "maintenance.solution": "Solution apportee",
     "maintenance.request": "Demander une maintenance",
     "maintenance.questionnaire": "Questionnaire de maintenance",
-    "maintenance.purchasedFrom": "La machine a-t-elle ete achetee chez DITONA ?",
+    "maintenance.purchasedFrom": "La machine est elle de ditona ?",
     "maintenance.yes": "Oui",
     "maintenance.no": "Non",
     "maintenance.reference": "Numero de reference",
@@ -132,7 +135,7 @@ const dictionaries = {
     "maintenance.solution": "Solution provided",
     "maintenance.request": "Request maintenance",
     "maintenance.questionnaire": "Maintenance questionnaire",
-    "maintenance.purchasedFrom": "Was the machine purchased from DITONA?",
+    "maintenance.purchasedFrom": "Is the machine from DITONA?",
     "maintenance.yes": "Yes",
     "maintenance.no": "No",
     "maintenance.reference": "Reference number",
@@ -220,7 +223,7 @@ const dictionaries = {
     "maintenance.solution": "Solucao fornecida",
     "maintenance.request": "Solicitar manutencao",
     "maintenance.questionnaire": "Questionario de manutencao",
-    "maintenance.purchasedFrom": "A maquina foi comprada na DITONA?",
+    "maintenance.purchasedFrom": "A maquina e da DITONA?",
     "maintenance.yes": "Sim",
     "maintenance.no": "Nao",
     "maintenance.reference": "Numero de referencia",
@@ -745,8 +748,7 @@ export function currentLanguage() {
 }
 
 export function setLanguage(lang) {
-  const supported = ["fr", "en", "pt", "zh"];
-  localStorage.setItem(LANG_KEY, supported.includes(lang) ? lang : "fr");
+  localStorage.setItem(LANG_KEY, SUPPORTED_LANGUAGES.includes(lang) ? lang : "fr");
 }
 
 export function t(key) {
@@ -758,7 +760,35 @@ export function tr(text) {
   if (!text) return text;
   const lang = currentLanguage();
   if (lang === "fr") return cleanDisplayText(text);
-  return cleanDisplayText(textTranslations[lang]?.[text] || text);
+  const cleaned = cleanDisplayText(text);
+  return cleanDisplayText(textTranslations[lang]?.[cleaned] || translationCache()[cacheKey(lang, cleaned)] || cleaned);
+}
+
+export function trField(item, field, fallback = "") {
+  const value = item?.[field] ?? fallback;
+  if (!value) return value;
+  const lang = currentLanguage();
+  if (lang === "fr") return cleanDisplayText(value);
+  return cleanDisplayText(item?.translations?.[lang]?.[field] || tr(value));
+}
+
+export async function autoTranslateItem(item, fields = []) {
+  const next = { ...item, translations: { ...(item.translations || {}) } };
+  for (const lang of AUTO_TRANSLATION_LANGUAGES) {
+    next.translations[lang] = { ...(next.translations[lang] || {}) };
+    for (const field of fields) {
+      const source = cleanDisplayText(next[field] || "");
+      if (!source) continue;
+      next.translations[lang][field] = await translateTextOnline(source, lang);
+    }
+  }
+  return next;
+}
+
+export async function autoTranslateList(items = [], fields = []) {
+  const translated = [];
+  for (const item of items) translated.push(await autoTranslateItem(item, fields));
+  return translated;
 }
 
 function cleanDisplayText(value) {
@@ -772,7 +802,11 @@ export function translateDom(root = document) {
   root.querySelectorAll("input[placeholder], textarea[placeholder]").forEach((field) => {
     const orig = field.dataset.origPlaceholder || field.placeholder;
     if (!field.dataset.origPlaceholder) field.dataset.origPlaceholder = orig;
-    field.placeholder = cleanDisplayText(lang === "fr" ? orig : (textTranslations[lang]?.[orig] || orig));
+    const translated = lang === "fr" ? orig : (textTranslations[lang]?.[orig] || translationCache()[cacheKey(lang, orig)] || orig);
+    field.placeholder = cleanDisplayText(translated);
+    if (lang !== "fr" && translated === orig) translateTextOnline(orig, lang).then((next) => {
+      if (next && currentLanguage() === lang && field.isConnected) field.placeholder = next;
+    });
   });
   
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -792,15 +826,74 @@ export function translateDom(root = document) {
     const parent = node.parentElement;
     if (!parent) return;
     
-    if (!parent.dataset.origText) parent.dataset.origText = trimmed;
-    const frSource = parent.dataset.origText;
+    if (!node.__ditonaOrigText) node.__ditonaOrigText = trimmed;
+    const frSource = node.__ditonaOrigText;
     
     if (lang === "fr") {
       const clean = cleanDisplayText(frSource);
       if (frSource && clean !== trimmed) node.nodeValue = current.replace(trimmed, clean);
     } else {
-      const translated = cleanDisplayText(textTranslations[lang]?.[frSource] || frSource);
+      const translated = cleanDisplayText(textTranslations[lang]?.[frSource] || translationCache()[cacheKey(lang, frSource)] || frSource);
       if (translated !== trimmed) node.nodeValue = current.replace(trimmed, translated);
+      if (translated === frSource) {
+        translateTextOnline(frSource, lang).then((next) => {
+          if (!next || currentLanguage() !== lang || !node.isConnected) return;
+          node.nodeValue = node.nodeValue.replace(node.nodeValue.trim(), cleanDisplayText(next));
+        });
+      }
     }
   });
+}
+
+function translationCache() {
+  try {
+    return JSON.parse(localStorage.getItem(TRANSLATION_CACHE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveTranslation(lang, source, translated) {
+  if (!translated || translated === source) return;
+  const cache = translationCache();
+  cache[cacheKey(lang, source)] = cleanDisplayText(translated);
+  localStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(cache));
+}
+
+function cacheKey(lang, source) {
+  return `${lang}:${cleanDisplayText(source).toLowerCase()}`;
+}
+
+function onlineLang(lang) {
+  if (lang === "zh") return "zh-CN";
+  return lang;
+}
+
+function canAutoTranslate(text) {
+  const clean = cleanDisplayText(text);
+  if (!clean || clean.length < 2 || clean.length > 450) return false;
+  if (/^(DITONA|FCFA|WhatsApp|\+?\d[\d\s.-]*|[\W_]+)$/i.test(clean)) return false;
+  if (/^[\w.-]+@[\w.-]+$/.test(clean)) return false;
+  return true;
+}
+
+export async function translateTextOnline(text, lang) {
+  const source = cleanDisplayText(text);
+  if (lang === "fr" || !canAutoTranslate(source)) return source;
+  const cached = translationCache()[cacheKey(lang, source)];
+  if (cached) return cached;
+  try {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(source)}&langpair=fr|${onlineLang(lang)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("translation failed");
+    const payload = await res.json();
+    const translated = cleanDisplayText(payload?.responseData?.translatedText || "");
+    if (translated && translated.toLowerCase() !== source.toLowerCase()) {
+      saveTranslation(lang, source, translated);
+      return translated;
+    }
+  } catch (err) {
+    console.warn("[i18n] traduction automatique indisponible:", err);
+  }
+  return source;
 }

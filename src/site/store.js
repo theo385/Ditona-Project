@@ -213,6 +213,8 @@ function loadLocalData() {
       maintenanceServices: parsed.maintenanceServices?.length ? parsed.maintenanceServices : clone(defaults.maintenanceServices),
       formations: parsed.formations?.length ? parsed.formations : clone(defaults.formations),
       services: parsed.services?.length ? parsed.services : clone(defaults.services),
+      ads: parsed.ads?.length ? parsed.ads : clone(defaults.ads || []),
+      adsSettings: { ...clone(defaults.adsSettings || {}), ...(parsed.adsSettings || {}) },
       messages: [],
       orders: [],
       appointments: [],
@@ -264,6 +266,8 @@ function normalizeData(next) {
     maintenanceServices: normalizeCollection(next.maintenanceServices || fallback.maintenanceServices, fallback.maintenanceServices),
     formations: normalizeCollection(next.formations || fallback.formations, fallback.formations),
     services: normalizeCollection(next.services, fallback.services),
+    ads: normalizeCollection(next.ads || fallback.ads || [], fallback.ads || []),
+    adsSettings: { ...clone(fallback.adsSettings || {}), ...(next.adsSettings || {}) },
     maintenanceRequests: next.maintenanceRequests || [],
   };
 }
@@ -273,6 +277,9 @@ function appRequestFromSupabase(row = {}) {
     ...row,
     machineId: row.machine_id ?? row.machineId,
     autoReply: row.auto_reply ?? row.autoReply ?? "",
+    photoUrl: row.photo_url ?? row.photoUrl ?? "",
+    photoName: row.photo_name ?? row.photoName ?? "",
+    purchasedFromDitona: row.purchased_from_ditona ?? row.purchasedFromDitona ?? "",
     seenAt: row.seen_at ?? row.seenAt ?? "",
     createdAt: row.created_at ?? row.createdAt ?? "",
   };
@@ -287,6 +294,18 @@ function requestToSupabase(row = {}) {
   if ("autoReply" in next) {
     next.auto_reply = next.autoReply;
     delete next.autoReply;
+  }
+  if ("photoUrl" in next) {
+    next.photo_url = next.photoUrl;
+    delete next.photoUrl;
+  }
+  if ("photoName" in next) {
+    next.photo_name = next.photoName;
+    delete next.photoName;
+  }
+  if ("purchasedFromDitona" in next) {
+    next.purchased_from_ditona = next.purchasedFromDitona;
+    delete next.purchasedFromDitona;
   }
   if ("seenAt" in next) {
     next.seen_at = next.seenAt;
@@ -310,6 +329,8 @@ function localContentSnapshot() {
     maintenanceServices: data.maintenanceServices,
     formations: data.formations,
     services: data.services,
+    ads: data.ads || [],
+    adsSettings: data.adsSettings || clone(defaults.adsSettings || {}),
     messages: [],
     orders: [],
     appointments: [],
@@ -449,9 +470,7 @@ export async function signupCustomer(email, password, role = "acheteur", confirm
   });
   if (!res.ok) throw new Error(await authErrorMessage(res, "Inscription impossible. Essayez un autre e-mail."));
   const session = await res.json();
-  if (!session.access_token) {
-    throw new Error("Compte cree. Verifiez votre e-mail pour activer la connexion.");
-  }
+  if (!session.access_token) return { pendingConfirmation: true, user: { id: cleanEmail, email: cleanEmail } };
   await rememberCustomer(session.user || { id: cleanEmail, email: cleanEmail }, role);
   sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
   return session;

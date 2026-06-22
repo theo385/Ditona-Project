@@ -1,6 +1,7 @@
-import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, addMaintenanceRequest, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession } from "./store.js";
+import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, addMaintenanceRequest, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession, uploadMediaFile } from "./store.js";
 import { machineCard, mediaTag, orderForm, publicShell, realisationCard, requestIdentityFields, serviceCard, setSlideTimer, visualTitle } from "./components.js";
-import { t, tr } from "./i18n.js";
+import { discountedPrice, escapeHtml } from "./format.js";
+import { t, tr, trField } from "./i18n.js";
 
 export function homePage() {
   const media = data.homeMedia;
@@ -11,21 +12,21 @@ export function homePage() {
           ${mediaTag(item)}
           <div class="cinema-caption">
             <p class="eyebrow">${t("home.eyebrow")}</p>
-            <h1>${tr(item.title)}</h1>
-            <p>${tr(item.subtitle)}</p>
+            <h1>${trField(item, "title")}</h1>
+            <p>${trField(item, "subtitle")}</p>
           </div>
         </article>
       `).join("")}
       <div class="hero-dots">${media.map((_, index) => `<button class="${index === 0 ? "active" : ""}" data-dot="${index}"></button>`).join("")}</div>
     </section>
     <section class="ticker service-ticker">
-      <div>${[...data.services, ...data.services].map((service) => `<span>${tr(service.title)}</span>`).join("")}</div>
+      <div>${[...data.services, ...data.services].map((service) => `<span>${trField(service, "title")}</span>`).join("")}</div>
     </section>
     <section class="home-proof">
       ${(data.homeProof || []).filter(Boolean).map((item) => `
         <article data-link="${item.target || "/realisations"}" class="click-card">
           ${mediaTag(item)}
-          <div><strong>${tr(item.title)}</strong><span>${tr(item.subtitle || "")}</span></div>
+          <div><strong>${trField(item, "title")}</strong><span>${trField(item, "subtitle")}</span></div>
         </article>
       `).join("")}
     </section>
@@ -34,8 +35,8 @@ export function homePage() {
       <div class="focus-grid">
         ${data.services.slice(0, 4).map((service) => `
           <article data-link="${service.target || "/services"}" class="click-card">
-            <h3>${tr(service.title)}</h3>
-            <p>${tr(service.text)}</p>
+            <h3>${trField(service, "title")}</h3>
+            <p>${trField(service, "text")}</p>
           </article>
         `).join("")}
       </div>
@@ -63,7 +64,7 @@ export function machinesPage() {
     ${visualTitle("machines", "Catalogue")}
     <section class="toolbar">
       <input id="machine-search" placeholder="Rechercher une machine...">
-      <select id="machine-category"><option value="">Toutes categories</option>${[...new Set(data.machines.map((m) => m.category))].map((c) => `<option>${c}</option>`).join("")}</select>
+      <select id="machine-category"><option value="">${tr("Toutes categories")}</option>${[...new Set(data.machines.map((m) => m.category))].map((c) => `<option value="${c}">${tr(c)}</option>`).join("")}</select>
     </section>
     <section class="section"><div id="machine-list" class="card-grid"></div></section>
   `, "/machines");
@@ -101,8 +102,8 @@ export function realisationDetailPage(id) {
   ];
   publicShell(`
     <section class="detail-hero">
-      <img src="${item.image}" alt="${tr(item.title)}">
-      <div><p class="eyebrow">${t("realisations.title")}</p><h1>${tr(item.title)}</h1><p>${tr(item.comment || item.description || "")}</p></div>
+      <img src="${item.image}" alt="${trField(item, "title")}">
+      <div><p class="eyebrow">${t("realisations.title")}</p><h1>${trField(item, "title")}</h1><p>${trField(item, item.comment ? "comment" : "description")}</p></div>
     </section>
     <section class="section detail-layout">
       <button class="ghost" data-link="/realisations">${t("realisations.back")}</button>
@@ -110,9 +111,9 @@ export function realisationDetailPage(id) {
         <article class="panel step-card">
           <span>${index + 1}</span>
           <div>
-            <h2>${tr(step.title)}</h2>
-            <p>${tr(step.description)}</p>
-            ${step.image ? `<img src="${step.image}" alt="${tr(step.title)}" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;">` : ""}
+            <h2>${trField(step, "title")}</h2>
+            <p>${trField(step, "description")}</p>
+            ${step.image ? `<img src="${step.image}" alt="${trField(step, "title")}" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;">` : ""}
           </div>
         </article>
       `).join("")}</div>
@@ -136,25 +137,25 @@ export function maintenanceDetailPage(id) {
   if (!item) return servicesPage();
   publicShell(`
     <section class="detail-hero">
-      <img src="${item.image}" alt="${tr(item.title)}">
-      <div><p class="eyebrow">${t("maintenance.title")}</p><h1>${tr(item.title)}</h1><p>${tr(item.solution || item.text || "")}</p></div>
+      <img src="${item.image}" alt="${trField(item, "title")}">
+      <div><p class="eyebrow">${t("maintenance.title")}</p><h1>${trField(item, "title")}</h1><p>${trField(item, item.solution ? "solution" : "text")}</p></div>
     </section>
     <section class="section detail-layout">
       <button class="ghost" data-link="/services">${t("realisations.back")}</button>
       <div class="panel maintenance-story">
         <h2>${t("maintenance.problem")}</h2>
-        <p>${tr(item.problem || "")}</p>
+        <p>${trField(item, "problem")}</p>
         ${item.problemImage ? `<img src="${item.problemImage}" alt="Probleme" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;">` : ""}
         <h2>${t("maintenance.solution")}</h2>
-        <p>${tr(item.solution || item.text || "")}</p>
+        <p>${trField(item, item.solution ? "solution" : "text")}</p>
         ${item.solutionImage ? `<img src="${item.solutionImage}" alt="Solution" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;">` : ""}
       </div>
       <div class="timeline">${(item.history || []).map((row) => `
         <article class="panel step-card">
           <span>${row.date || ""}</span>
           <div>
-            <h2>${tr(row.problem)}</h2>
-            <p>${tr(row.solution)}</p>
+            <h2>${trField(row, "problem")}</h2>
+            <p>${trField(row, "solution")}</p>
             ${row.image ? `<img src="${row.image}" alt="Intervention" style="width:100%; max-width:500px; border-radius:8px; margin-top:16px;">` : ""}
           </div>
         </article>
@@ -170,29 +171,75 @@ export function maintenanceRequestPage() {
       <form id="maintenance-form" class="panel form-panel">
         <h2>${t("maintenance.questionnaire")}</h2>
         ${requestIdentityFields()}
-        <label>${t("maintenance.purchasedFrom")}
-          <select name="purchasedFromDitona" data-maintenance-origin>
-            <option value="Oui">${t("maintenance.yes")}</option>
-            <option value="Non">${t("maintenance.no")}</option>
-          </select>
+        
+        <label style="margin-bottom: 20px;">
+          <strong>La machine est-elle de DITONA ?</strong>
+          <div style="display: flex; gap: 30px; margin-top: 12px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+              <input type="radio" name="purchasedFromDitona" value="Oui" data-maintenance-origin>
+              <strong>Oui</strong>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+              <input type="radio" name="purchasedFromDitona" value="Non" data-maintenance-origin>
+              <strong>Non</strong>
+            </label>
+          </div>
         </label>
-        <label data-reference-field>${t("maintenance.reference")}<input name="reference" placeholder="${t("maintenance.referenceHelp")}"></label>
-        <label data-photo-field hidden>${t("maintenance.addPhoto")}<input name="photo" type="file" accept="image/*"></label>
-        <label>${t("maintenance.behavior")}<textarea name="behavior" rows="6" required placeholder="${t("maintenance.behaviorPlaceholder")}"></textarea></label>
+        
+        <label data-reference-field hidden style="transition: all 0.3s ease;">
+          <strong>Numéro de référence</strong>
+          <input name="reference" placeholder="Entrez le numéro de référence de votre machine DITONA">
+        </label>
+        
+        <label data-photo-field hidden style="transition: all 0.3s ease;">
+          <strong>Ajouter une photo de la machine</strong>
+          <input name="photo" type="file" accept="image/*">
+        </label>
+        
+        <label>
+          <strong>Décrivez le comportement de la machine</strong>
+          <textarea name="behavior" rows="6" required placeholder="Décrivez les symptômes, les bruits, les erreurs affichées..."></textarea>
+        </label>
+        
         <button class="primary" type="submit">${t("maintenance.submit")}</button>
       </form>
     </section>
   `, "/services");
-  const origin = document.querySelector("[data-maintenance-origin]");
+  
+  const radios = document.querySelectorAll("[data-maintenance-origin]");
   const reference = document.querySelector("[data-reference-field]");
   const photo = document.querySelector("[data-photo-field]");
+  
   const toggle = () => {
-    const ditona = origin.value === "Oui";
-    reference.hidden = !ditona;
-    photo.hidden = ditona;
+    const selected = document.querySelector("[data-maintenance-origin]:checked");
+    if (!selected) {
+      reference.hidden = true;
+      photo.hidden = true;
+      return;
+    }
+    
+    if (selected.value === "Oui") {
+      reference.hidden = false;
+      photo.hidden = true;
+      // Rendre le champ référence requis si Oui
+      reference.querySelector("input").required = true;
+      photo.querySelector("input").required = false;
+    } else if (selected.value === "Non") {
+      reference.hidden = true;
+      photo.hidden = false;
+      // Rendre le champ photo requis si Non
+      reference.querySelector("input").required = false;
+      photo.querySelector("input").required = true;
+    }
   };
-  origin.addEventListener("change", toggle);
+  
+  radios.forEach(radio => {
+    radio.addEventListener("change", toggle);
+  });
+  
+  // Initialiser l'état
   toggle();
+  
   document.querySelector("#maintenance-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const fd = new FormData(event.target);
@@ -223,12 +270,12 @@ export function formationPage() {
     <section class="section">
       <div class="gallery-grid">${(data.formations || []).map((formation) => `
         <article class="item-card click-card" data-link="/formation/${formation.id}">
-          <img src="${formation.image}" alt="${tr(formation.title)}">
+          <img src="${formation.image}" alt="${trField(formation, "title")}">
           <div class="item-body">
             <span class="pill">${formation.available ? t("formations.available") : t("formations.unavailable")}</span>
-            <h3>${tr(formation.title)}</h3>
-            <p>${tr(formation.description)}</p>
-            <p class="comment">${tr(formation.duration || "")}</p>
+            <h3>${trField(formation, "title")}</h3>
+            <p>${trField(formation, "description")}</p>
+            <p class="comment">${trField(formation, "duration")}</p>
             <button class="primary small" ${formation.available ? `data-link="/formation/${formation.id}"` : "disabled"}>${t("formations.apply")}</button>
           </div>
         </article>
@@ -244,7 +291,7 @@ export function trainingApplyPage(id) {
     ${visualTitle("formation", "Formation")}
     <section class="section formation-only">
       <form id="formation-form" class="panel form-panel">
-        <h2>${t("formations.applyTitle")}: ${tr(formation.title)}</h2>
+        <h2>${t("formations.applyTitle")}: ${trField(formation, "title")}</h2>
         ${requestIdentityFields()}
         <input name="training" type="hidden" value="${formation.title}">
         <label>Niveau actuel<select name="level"><option>Debutant</option><option>Intermediaire</option><option>Avance</option><option>Entreprise / equipe</option></select></label>
@@ -578,6 +625,7 @@ export function contactPage(subject = "") {
 export function orderMachine(id) {
   const machine = data.machines.find((m) => String(m.id) === String(id));
   if (!machine) return;
+  const pricing = discountedPrice(machine);
   document.querySelector("[data-modal]")?.remove();
   document.body.insertAdjacentHTML("beforeend", orderForm(machine));
   const closeModal = () => document.querySelector("[data-modal]")?.remove();
@@ -589,10 +637,32 @@ export function orderMachine(id) {
     event.preventDefault();
     const fd = Object.fromEntries(new FormData(event.target));
     const client = `${fd.name} ${fd.firstname}`.trim();
-    await addOrder({ id: "CMD-" + Date.now().toString().slice(-6), machineId: machine.id, machine: machine.name, price: machine.price, client, name: fd.name, firstname: fd.firstname, email: fd.email || "", phone: fd.phone, note: fd.message || "Demande creee depuis le site.", status: "Nouvelle", reply: "", seenAt: "", createdAt: today() });
+    await addOrder({ id: "CMD-" + Date.now().toString().slice(-6), machineId: machine.id, machine: machine.name, price: pricing.finalPrice, client, name: fd.name, firstname: fd.firstname, email: fd.email || "", phone: fd.phone, note: fd.message || "Demande creee depuis le site.", status: "Nouvelle", reply: "", seenAt: "", createdAt: today() });
     document.querySelector("#order-form").innerHTML = `<div class="success"><h2>Commande envoyee</h2><button type="button" class="primary" data-close-modal>Fermer</button></div>`;
     document.querySelector("[data-close-modal]").addEventListener("click", closeModal);
   });
+}
+
+export function adDetailPage(id) {
+  const ad = (data.ads || []).find((row) => String(row.id) === String(id));
+  if (!ad) return homePage();
+  const phone = String(ad.whatsapp || "22870021225").replace(/\D/g, "");
+  const message = encodeURIComponent(`Bonjour, je suis interesse par: ${ad.title || "Publicite DITONA"}`);
+  publicShell(`
+    <section class="ad-detail-hero">
+      <div class="ad-detail-media">
+        ${ad.type === "video" ? `<video src="${escapeHtml(ad.image)}" controls autoplay muted playsinline></video>` : `<img src="${escapeHtml(ad.image)}" alt="${escapeHtml(trField(ad, "title", "Publicite"))}">`}
+      </div>
+      <div class="ad-detail-content">
+        <p class="eyebrow">${tr("Publicite")}</p>
+        <h1>${escapeHtml(trField(ad, "title"))}</h1>
+        ${ad.text ? `<p class="lead-dark">${escapeHtml(trField(ad, "text"))}</p>` : ""}
+        ${ad.description ? `<p>${escapeHtml(trField(ad, "description"))}</p>` : ""}
+        ${ad.location ? `<div class="ad-location"><strong>${tr("Localisation")}</strong><span>${escapeHtml(trField(ad, "location"))}</span></div>` : ""}
+        <a class="primary ad-whatsapp" href="https://wa.me/${phone}?text=${message}" target="_blank" rel="noopener">${escapeHtml(trField(ad, "cta", "Commander"))}</a>
+      </div>
+    </section>
+  `, "");
 }
 
 export function chatbotAnswer(text) {

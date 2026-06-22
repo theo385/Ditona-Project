@@ -59,6 +59,24 @@ CREATE TABLE IF NOT EXISTS training_requests (
   created_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS maintenance_requests (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  firstname TEXT,
+  phone TEXT,
+  email TEXT,
+  purchased_from_ditona TEXT,
+  reference TEXT,
+  photo_name TEXT,
+  photo_url TEXT,
+  behavior TEXT,
+  subject TEXT,
+  status TEXT DEFAULT 'Nouveau',
+  reply TEXT DEFAULT '',
+  seen_at TEXT DEFAULT '',
+  created_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS site_content (
   key TEXT PRIMARY KEY,
   value JSONB NOT NULL,
@@ -82,6 +100,7 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE training_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE maintenance_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE site_content ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customer_accounts ENABLE ROW LEVEL SECURITY;
 
@@ -89,6 +108,7 @@ DROP POLICY IF EXISTS allow_all_orders ON orders;
 DROP POLICY IF EXISTS allow_all_messages ON messages;
 DROP POLICY IF EXISTS allow_all_appointments ON appointments;
 DROP POLICY IF EXISTS allow_all_training ON training_requests;
+DROP POLICY IF EXISTS allow_all_maintenance ON maintenance_requests;
 DROP POLICY IF EXISTS allow_all_site_content ON site_content;
 DROP POLICY IF EXISTS allow_all_customer_accounts ON customer_accounts;
 DROP POLICY IF EXISTS allow_public_media_read ON storage.objects;
@@ -100,6 +120,7 @@ CREATE POLICY allow_all_orders ON orders FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_messages ON messages FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_appointments ON appointments FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_training ON training_requests FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY allow_all_maintenance ON maintenance_requests FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_site_content ON site_content FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_customer_accounts ON customer_accounts FOR ALL USING (true) WITH CHECK (true);
 

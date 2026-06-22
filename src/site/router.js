@@ -1,5 +1,6 @@
 import {
   adminAppointments,
+  adminAds,
   adminAccounts,
   adminDashboard,
   adminHome,
@@ -24,6 +25,7 @@ import { escapeHtml } from "./format.js";
 import { addMessage } from "./store.js";
 import {
   aboutPage,
+  adDetailPage,
   appointmentPage,
   chatbotAnswer,
   contactPage,
@@ -46,7 +48,7 @@ import {
 } from "./publicPages.js";
 
 const ADMIN_BASE = "/27ditona@ad07";
-const PUBLIC_LIMIT_MS = 60000;
+const PUBLIC_LIMIT_MS = 120000;
 const GUEST_STARTED_KEY = "ditona_guest_started_at";
 
 export function go(path) {
@@ -75,6 +77,7 @@ function bindGlobal() {
     setLanguage(event.target.value);
     render();
   });
+  bindFloatingAds();
   document.querySelector("[data-admin-collapse]")?.addEventListener("click", () => {
     const app = document.querySelector(".admin-app");
     const collapsed = !app.classList.contains("admin-collapsed");
@@ -180,6 +183,8 @@ function bindAdminActions() {
   document.querySelectorAll("[data-delete-home-proof]").forEach((el) => el.addEventListener("click", async () => { data.homeProof = (data.homeProof || []).filter((s) => s.id !== Number(el.dataset.deleteHomeProof)); await saveData(); adminHome(); }));
   document.querySelectorAll("[data-edit-machine]").forEach((el) => el.addEventListener("click", () => fillForm("#machine-form", data.machines.find((m) => m.id === Number(el.dataset.editMachine)))));
   document.querySelectorAll("[data-delete-machine]").forEach((el) => el.addEventListener("click", async () => { data.machines = data.machines.filter((m) => m.id !== Number(el.dataset.deleteMachine)); await saveData(); adminMachines(); }));
+  document.querySelectorAll("[data-edit-ad]").forEach((el) => el.addEventListener("click", () => fillForm("#ad-form", (data.ads || []).find((ad) => ad.id === Number(el.dataset.editAd)))));
+  document.querySelectorAll("[data-delete-ad]").forEach((el) => el.addEventListener("click", async () => { data.ads = (data.ads || []).filter((ad) => ad.id !== Number(el.dataset.deleteAd)); await saveData(); adminAds(); }));
   document.querySelectorAll("[data-edit-realisation]").forEach((el) => el.addEventListener("click", () => fillForm("#realisation-form", data.realisations.find((r) => r.id === Number(el.dataset.editRealisation)))));
   document.querySelectorAll("[data-delete-realisation]").forEach((el) => el.addEventListener("click", async () => { data.realisations = data.realisations.filter((r) => r.id !== Number(el.dataset.deleteRealisation)); await saveData(); adminRealisations(); }));
   document.querySelectorAll("[data-edit-section]").forEach((el) => el.addEventListener("click", () => {
@@ -214,6 +219,68 @@ function bindAdminActions() {
   }));
 }
 
+function bindFloatingAds() {
+  const box = document.querySelector("[data-floating-ads]");
+  if (!box) return;
+  const ads = [...box.querySelectorAll("[data-floating-ad]")];
+  if (!ads.length) return;
+  const dots = [...box.querySelectorAll("[data-ad-dot]")];
+  let index = 0;
+  let timer = null;
+  let hiddenUntil = 0;
+  const visibleMs = Number(box.dataset.visibleMs) || 22000;
+  const hiddenMs = Number(box.dataset.hiddenMs) || 18000;
+  const show = () => {
+    const shouldShow = window.scrollY > 260 && Date.now() > hiddenUntil;
+    box.classList.toggle("visible", shouldShow);
+    ads.forEach((ad, i) => ad.classList.toggle("active", i === index));
+    dots.forEach((dot, i) => dot.classList.toggle("active", i === index));
+  };
+  const hideTemporarily = () => {
+    hiddenUntil = Date.now() + hiddenMs;
+    box.classList.remove("visible");
+    window.clearTimeout(window.ditonaAdVisibilityTimer);
+    window.ditonaAdVisibilityTimer = window.setTimeout(() => {
+      show();
+      scheduleVisibilityCycle();
+    }, hiddenMs);
+  };
+  const scheduleVisibilityCycle = () => {
+    window.clearTimeout(window.ditonaAdVisibilityTimer);
+    if (window.scrollY <= 260) return;
+    window.ditonaAdVisibilityTimer = window.setTimeout(hideTemporarily, visibleMs);
+  };
+  const schedule = () => {
+    window.clearTimeout(timer);
+    const delay = Number(ads[index]?.dataset.displayMs) || 7000;
+    timer = window.setTimeout(() => {
+      index = (index + 1) % ads.length;
+      show();
+      schedule();
+    }, delay);
+    window.ditonaAdTimer = timer;
+  };
+  const move = (next) => {
+    index = (next + ads.length) % ads.length;
+    show();
+    schedule();
+  };
+  const onScroll = () => {
+    show();
+    if (box.classList.contains("visible")) scheduleVisibilityCycle();
+  };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.clearTimeout(window.ditonaAdTimer);
+  window.clearTimeout(window.ditonaAdVisibilityTimer);
+  box.querySelector("[data-ad-prev]")?.addEventListener("click", () => move(index - 1));
+  box.querySelector("[data-ad-next]")?.addEventListener("click", () => move(index + 1));
+  dots.forEach((dot, i) => dot.addEventListener("click", () => move(i)));
+  box.querySelectorAll("[data-close-ad]").forEach((button) => button.addEventListener("click", hideTemporarily));
+  show();
+  schedule();
+  scheduleVisibilityCycle();
+}
+
 function setAdminMode(enabled) {
   document.documentElement.classList.toggle("admin-mode", enabled);
   document.body.classList.toggle("admin-mode", enabled);
@@ -222,6 +289,7 @@ function setAdminMode(enabled) {
 export function render() {
   const path = location.pathname;
   if (path === "/machines") return loadRemoteData().then(() => refreshSiteContent()).then(() => { machinesPage(); bindGlobal(); });
+  if (path.startsWith("/publicite/")) return loadRemoteData().then(() => refreshSiteContent()).then(() => { adDetailPage(path.split("/").pop()); bindGlobal(); });
   if (path === "/realisations") return loadRemoteData().then(() => refreshSiteContent()).then(() => { realisationsPage(); bindGlobal(); });
   if (path.startsWith("/realisations/")) return loadRemoteData().then(() => refreshSiteContent()).then(() => { realisationDetailPage(path.split("/").pop()); bindGlobal(); });
   if (path === "/services") return loadRemoteData().then(() => refreshSiteContent()).then(() => { servicesPage(); bindGlobal(); });
@@ -253,6 +321,7 @@ export function render() {
       if (path === `${ADMIN_BASE}/realisations`) return adminRealisations();
       if (path === `${ADMIN_BASE}/services`) return adminServices();
       if (path === `${ADMIN_BASE}/formations`) return adminFormations();
+      if (path === `${ADMIN_BASE}/ads`) return adminAds();
       if (path === `${ADMIN_BASE}/appointments`) return adminAppointments();
       if (path === `${ADMIN_BASE}/orders`) return adminOrders();
       if (path === `${ADMIN_BASE}/messages`) return adminMessages();

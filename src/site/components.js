@@ -1,6 +1,6 @@
 import { currentCustomer, data } from "./store.js";
-import { escapeHtml, money } from "./format.js";
-import { currentLanguage, t, tr, translateDom } from "./i18n.js";
+import { discountedPrice, escapeHtml, money } from "./format.js";
+import { currentLanguage, t, tr, trField, translateDom } from "./i18n.js";
 
 let slideTimer = null;
 
@@ -118,6 +118,7 @@ export function publicShell(content, active = "") {
       </div>
     </div>
     <main>${content}</main>
+    ${siteAds()}
     ${chatWidget()}
     <footer class="site-footer">
       <div class="footer-about">${logo("footer-brand")}<p>${t("footer.about")}</p></div>
@@ -165,6 +166,31 @@ export function publicShell(content, active = "") {
   translateDom(document.querySelector("#app"));
 }
 
+function siteAds() {
+  const ads = (data.ads || []).filter((ad) => ad.active !== false && ad.image);
+  if (!ads.length) return "";
+  return `
+    <aside class="floating-ads" data-floating-ads data-visible-ms="${Number(data.adsSettings?.visibleMs) || 22000}" data-hidden-ms="${Number(data.adsSettings?.hiddenMs) || 18000}">
+      ${ads.slice(0, 4).map((ad, index) => `
+        <article class="floating-ad ${index === 0 ? "active" : ""}" data-floating-ad="${index}" data-display-ms="${Number(ad.displayMs) || 7000}">
+          <button type="button" data-close-ad aria-label="Fermer">x</button>
+          ${ad.type === "video" ? `<video src="${escapeHtml(ad.image)}" autoplay muted loop playsinline></video>` : `<img src="${escapeHtml(ad.image)}" alt="${escapeHtml(trField(ad, "title", "Publicite"))}">`}
+          <div>
+            <strong>${escapeHtml(trField(ad, "title"))}</strong>
+            ${ad.text ? `<p>${escapeHtml(trField(ad, "text"))}</p>` : ""}
+            <button class="primary small" data-link="/publicite/${escapeHtml(ad.id)}">${escapeHtml(trField(ad, "cta", "Voir"))}</button>
+          </div>
+        </article>
+      `).join("")}
+      <div class="floating-ad-controls">
+        <button type="button" data-ad-prev aria-label="Publicite precedente">‹</button>
+        <div class="floating-ad-dots">${ads.slice(0, 4).map((_, index) => `<button type="button" class="${index === 0 ? "active" : ""}" data-ad-dot="${index}" aria-label="Publicite ${index + 1}"></button>`).join("")}</div>
+        <button type="button" data-ad-next aria-label="Publicite suivante">›</button>
+      </div>
+    </aside>
+  `;
+}
+
 function customerIdentity() {
   const session = currentCustomer();
   const user = session?.user;
@@ -208,23 +234,27 @@ export function chatWidget() {
 export function machineMini(machine) {
   return `
     <article class="machine-mini">
-      <img src="${machine.image}" alt="${escapeHtml(tr(machine.name))}">
-      <div><strong>${escapeHtml(tr(machine.name))}</strong><span>${escapeHtml(tr(machine.comment))}</span></div>
+      <img src="${machine.image}" alt="${escapeHtml(trField(machine, "name"))}">
+      <div><strong>${escapeHtml(trField(machine, "name"))}</strong><span>${escapeHtml(trField(machine, "comment"))}</span></div>
     </article>
   `;
 }
 
 export function machineCard(machine) {
+  const pricing = discountedPrice(machine);
   return `
     <article class="item-card">
-      <img src="${machine.image}" alt="${escapeHtml(tr(machine.name))}">
+      <img src="${machine.image}" alt="${escapeHtml(trField(machine, "name"))}">
       <div class="item-body">
-        <span class="pill">${escapeHtml(tr(machine.category))}</span>
-        <h3>${escapeHtml(tr(machine.name))}</h3>
-        <p>${escapeHtml(tr(machine.description))}</p>
-        <p class="comment">${escapeHtml(tr(machine.comment || ""))}</p>
+        <span class="pill">${escapeHtml(trField(machine, "category"))}</span>
+        <h3>${escapeHtml(trField(machine, "name"))}</h3>
+        <p>${escapeHtml(trField(machine, "description"))}</p>
+        <p class="comment">${escapeHtml(trField(machine, "comment"))}</p>
         <div class="item-foot">
-          <strong>${money(machine.price)}</strong>
+          <div class="price-stack">
+            ${pricing.discount ? `<span class="discount-badge">-${pricing.discount}%</span><del>${money(pricing.price)}</del>` : ""}
+            <strong>${money(pricing.finalPrice)}</strong>
+          </div>
           <button class="primary small" data-order="${machine.id}">${t("action.order")}</button>
         </div>
       </div>
@@ -251,10 +281,10 @@ export function orderForm(machine) {
 export function realisationCard(item) {
   return `
     <article class="item-card click-card" data-link="/realisations/${item.id}">
-      <img src="${item.image}" alt="${escapeHtml(tr(item.title))}">
+      <img src="${item.image}" alt="${escapeHtml(trField(item, "title"))}">
       <div class="item-body">
-        <h3>${escapeHtml(tr(item.title))}</h3>
-        <p>${escapeHtml(tr(item.comment || item.description || ""))}</p>
+        <h3>${escapeHtml(trField(item, "title"))}</h3>
+        <p>${escapeHtml(trField(item, item.comment ? "comment" : "description"))}</p>
         <div class="item-foot">
           <span class="pill">${t("realisations.steps")}</span>
           <button class="ghost small" data-link="/realisations/${item.id}">${t("realisations.viewDetails")}</button>
@@ -267,10 +297,10 @@ export function realisationCard(item) {
 export function serviceCard(service) {
   return `
     <article class="service-card click-card" data-link="/services/${service.id}">
-      <img src="${service.image}" alt="${escapeHtml(tr(service.title))}">
+      <img src="${service.image}" alt="${escapeHtml(trField(service, "title"))}">
       <div>
-        <h3>${escapeHtml(tr(service.title))}</h3>
-        <p>${escapeHtml(tr(service.text || service.solution || ""))}</p>
+        <h3>${escapeHtml(trField(service, "title"))}</h3>
+        <p>${escapeHtml(trField(service, service.text ? "text" : "solution"))}</p>
         <button class="primary small" data-link="/services/${service.id}">${t("realisations.viewDetails")}</button>
       </div>
     </article>
@@ -284,7 +314,7 @@ export function adminItem(item, type) {
   return `
     <article class="admin-row">
       ${preview}
-      <div><h3>${escapeHtml(item.name || item.title || "")}</h3><p>${escapeHtml(item.category || item.cta || item.status || "")} ${money(item.price)}</p><p>${escapeHtml(item.comment || item.subtitle || item.description || item.text || "")}</p></div>
+      <div><h3>${escapeHtml(item.name || item.title || "")}</h3><p>${escapeHtml(item.category || item.cta || item.status || "")} ${money(item.price)}${item.discountPercent ? ` (-${escapeHtml(item.discountPercent)}%)` : ""}</p><p>${escapeHtml(item.comment || item.subtitle || item.description || item.text || "")}</p></div>
       <button class="ghost small" data-edit-${type}="${item.id}">Modifier</button>
       <button class="danger small" data-delete-${type}="${item.id}">Supprimer</button>
     </article>
@@ -342,7 +372,7 @@ export function requestThread(item, type) {
     item.date ? `Date souhaitee: ${item.date}` : "",
     item.level ? `Niveau: ${item.level}` : "",
     item.training ? `Formation: ${item.training}` : "",
-    item.purchasedFromDitona ? `Machine achetee chez DITONA: ${item.purchasedFromDitona}` : "",
+    item.purchasedFromDitona ? `Machine de DITONA: ${item.purchasedFromDitona}` : "",
     item.reference ? `Reference: ${item.reference}` : "",
     item.photoName ? `Photo: ${item.photoName}` : "",
   ].filter(Boolean);
@@ -354,6 +384,7 @@ export function requestThread(item, type) {
     </div>
     <div class="thread-chat">
       ${details.length ? `<div class="request-meta">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("")}</div>` : ""}
+      ${item.photoUrl ? `<p><a class="ghost small" href="${escapeHtml(item.photoUrl)}" target="_blank" rel="noopener">Voir la photo machine</a></p>` : ""}
       <p class="bubble client">${escapeHtml(item.message || item.note || item.behavior || "Demande creee depuis le site.")}</p>
       ${reply ? `<p class="bubble admin">${escapeHtml(reply)}</p>` : ""}
     </div>
@@ -382,7 +413,7 @@ export function requestThreadSimple(item, type) {
     item.date ? `Date souhaitee: ${item.date}` : "",
     item.level ? `Niveau: ${item.level}` : "",
     item.training ? `Formation: ${item.training}` : "",
-    item.purchasedFromDitona ? `Machine achetee chez DITONA: ${item.purchasedFromDitona}` : "",
+    item.purchasedFromDitona ? `Machine de DITONA: ${item.purchasedFromDitona}` : "",
     item.reference ? `Reference: ${item.reference}` : "",
     item.photoName ? `Photo: ${item.photoName}` : "",
   ].filter(Boolean);
@@ -393,6 +424,7 @@ export function requestThreadSimple(item, type) {
     </div>
     <div class="thread-chat">
       ${details.length ? `<div class="request-meta">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("")}</div>` : ""}
+      ${item.photoUrl ? `<p><a class="ghost small" href="${escapeHtml(item.photoUrl)}" target="_blank" rel="noopener">Voir la photo machine</a></p>` : ""}
       <p class="bubble client">${escapeHtml(item.message || item.note || item.behavior || "Demande creee depuis le site.")}</p>
     </div>
     <div class="thread-actions">
