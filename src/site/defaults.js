@@ -96,6 +96,12 @@ export const defaults = {
       description: "Machine CNC compacte pour gravure, decoupe et prototypage industriel.",
       comment: "Adaptee aux ateliers techniques, ecoles et productions legeres.",
       status: "Disponible",
+      gallery: [{ url: "/realisations/cnc-3w-iso.jpeg" }, { url: "/realisations/cnc-3w-noir.jpeg" }],
+      specs: [
+        { key: "Categorie", value: "Usinage CNC" },
+        { key: "Condition", value: "Neuf" },
+        { key: "Service apres-vente", value: "Installation, formation et support technique" },
+      ],
     },
     {
       id: 2,
@@ -107,6 +113,12 @@ export const defaults = {
       description: "Ligne de convoyage, dosage et remplissage pour production agro-industrielle.",
       comment: "Conception 3D, fabrication, installation et mise en service.",
       status: "Sur commande",
+      gallery: [{ url: "/realisations/ligne-remplissage.jpeg" }, { url: "/realisations/machine-labo.jpeg" }],
+      specs: [
+        { key: "Categorie", value: "Automatisation" },
+        { key: "Condition", value: "Sur commande" },
+        { key: "Service apres-vente", value: "Mise en service et formation operateur" },
+      ],
     },
     {
       id: 3,
@@ -119,6 +131,7 @@ export const defaults = {
       description: "Diagnostic, entretien et remise en service d'equipements hydrauliques.",
       comment: "Intervention terrain avec controle securite.",
       status: "Service",
+      gallery: [{ url: "/realisations/maintenance-groupe-1.jpeg" }, { url: "/realisations/maintenance-groupe-2.jpeg" }],
     },
     {
       id: 4,
@@ -131,6 +144,7 @@ export const defaults = {
       description: "Machine speciale avec capteurs, controle et instrumentation.",
       comment: "Projet realise selon cahier des charges.",
       status: "Sur devis",
+      gallery: [{ url: "/realisations/machine-labo.jpeg" }, { url: "/realisations/ligne-remplissage.jpeg" }],
     },
   ],
   realisations: [
@@ -285,4 +299,5 @@ export const defaults = {
   appointments: [],
   trainingRequests: [],
   maintenanceRequests: [],
+  machineComments: [],
 };

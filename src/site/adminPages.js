@@ -206,6 +206,16 @@ export function adminMachines() {
       <label>Commentaire<textarea name="comment" rows="3"></textarea></label>
       <label>Image<input name="imageFile" type="file" accept="image/*"></label>
       <input name="image" placeholder="URL image">
+      <h3>Galerie de la machine</h3>
+      <div id="machine-gallery-container" class="admin-repeat-list"></div>
+      <button type="button" class="ghost small" id="add-machine-gallery">+ Ajouter une image</button>
+      <h3>Caracteristiques</h3>
+      <div id="machine-specs-container" class="admin-repeat-list"></div>
+      <button type="button" class="ghost small" id="add-machine-spec">+ Ajouter une caracteristique</button>
+      <label>Texte charge sous les caracteristiques<textarea name="detailsText" rows="5" placeholder=></textarea></label>
+      <label>Charger un fichier de caracteristiques<input name="detailsFile" type="file" accept=".txt,.csv,.html,.htm,.doc,.docx,.pdf"></label>
+      <input name="detailsFileUrl" placeholder="URL du fichier charge">
+      <input name="detailsFileName" placeholder="Nom du fichier">
       <button class="primary">Enregistrer</button>
       <button class="ghost" type="reset">Nouveau</button>
     </form>
@@ -478,6 +488,60 @@ function bindHomeProofForm() {
 
 function bindMachineForm() {
   const form = document.querySelector("#machine-form");
+  const galleryContainer = document.querySelector("#machine-gallery-container");
+  const specsContainer = document.querySelector("#machine-specs-container");
+  const addGalleryBtn = document.querySelector("#add-machine-gallery");
+  const addSpecBtn = document.querySelector("#add-machine-spec");
+
+  const addGalleryImage = (item = {}) => {
+    const index = galleryContainer.children.length;
+    const div = document.createElement("div");
+    div.className = "repeat-entry";
+    div.dataset.index = index;
+    div.innerHTML = `
+      <div class="repeat-entry-head">
+        <strong>Image ${index + 1}</strong>
+        <button type="button" class="danger small" data-remove-repeat>Supprimer</button>
+      </div>
+      <label>Fichier<input name="gallery-file-${index}" type="file" accept="image/*"></label>
+      <input name="gallery-url-${index}" placeholder="URL image" value="${escapeHtml(item.url || item.image || "")}">
+      ${item.url || item.image ? `<img src="${escapeHtml(item.url || item.image)}" alt="" class="repeat-preview">` : ""}
+    `;
+    galleryContainer.appendChild(div);
+  };
+
+  const addSpec = (item = {}) => {
+    const index = specsContainer.children.length;
+    const div = document.createElement("div");
+    div.className = "repeat-entry two-cols";
+    div.dataset.index = index;
+    div.innerHTML = `
+      <label>Nom<input name="spec-key-${index}" value="${escapeHtml(item.key || item.label || "")}" placeholder="Norme d'emission"></label>
+      <label>Valeur<input name="spec-value-${index}" value="${escapeHtml(item.value || "")}" placeholder="Euro 3"></label>
+      <button type="button" class="danger small" data-remove-repeat>Supprimer</button>
+    `;
+    specsContainer.appendChild(div);
+  };
+
+  const loadMachineRepeaters = (item = {}) => {
+    galleryContainer.innerHTML = "";
+    specsContainer.innerHTML = "";
+    const gallery = item.gallery?.length ? item.gallery : (item.image ? [{ url: item.image }] : []);
+    gallery.forEach(addGalleryImage);
+    (item.specs || []).forEach(addSpec);
+  };
+
+  addGalleryBtn?.addEventListener("click", () => addGalleryImage());
+  addSpecBtn?.addEventListener("click", () => addSpec());
+  form.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-repeat]");
+    if (button) button.closest(".repeat-entry")?.remove();
+  });
+  form.addEventListener("ditona:fill", (event) => loadMachineRepeaters(event.detail || {}));
+  form.addEventListener("reset", () => setTimeout(() => {
+    galleryContainer.innerHTML = "";
+    specsContainer.innerHTML = "";
+  }, 0));
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     await submitAdminForm(async () => {
@@ -485,7 +549,35 @@ function bindMachineForm() {
     const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
     const existing = data.machines.find((m) => m.id === id);
     const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "machines");
-    const next = { id, name: fd.get("name"), category: fd.get("category"), price: Number(fd.get("price")) || null, discountPercent: Math.max(0, Math.min(100, Number(fd.get("discountPercent")) || 0)), status: fd.get("status"), description: fd.get("description"), comment: fd.get("comment"), image };
+    const gallery = [];
+    for (const entry of galleryContainer.querySelectorAll(".repeat-entry")) {
+      const i = entry.dataset.index;
+      const input = form.querySelector(`input[name="gallery-file-${i}"]`);
+      const url = await readImage(input, fd.get(`gallery-url-${i}`) || "", "machines-gallery");
+      if (url) gallery.push({ url });
+    }
+    if (!gallery.length && image) gallery.push({ url: image });
+    const specs = [];
+    for (const entry of specsContainer.querySelectorAll(".repeat-entry")) {
+      const i = entry.dataset.index;
+      const key = String(fd.get(`spec-key-${i}`) || "").trim();
+      const value = String(fd.get(`spec-value-${i}`) || "").trim();
+      if (key || value) specs.push({ key, value });
+    }
+    let detailsText = fd.get("detailsText") || existing?.detailsText || "";
+    const detailsFileInput = form.detailsFile;
+    let detailsFileUrl = fd.get("detailsFileUrl") || existing?.detailsFileUrl || "";
+    let detailsFileName = fd.get("detailsFileName") || existing?.detailsFileName || "";
+    const detailsFile = detailsFileInput?.files?.[0];
+    if (detailsFile) {
+      detailsFileName = detailsFile.name;
+      const lower = detailsFile.name.toLowerCase();
+      if (lower.endsWith(".txt") || lower.endsWith(".csv") || lower.endsWith(".html") || lower.endsWith(".htm")) {
+        detailsText = await detailsFile.text();
+      }
+      detailsFileUrl = await uploadMediaFile(detailsFile, "machines-characteristics");
+    }
+    const next = { id, name: fd.get("name"), category: fd.get("category"), price: Number(fd.get("price")) || null, discountPercent: Math.max(0, Math.min(100, Number(fd.get("discountPercent")) || 0)), status: fd.get("status"), description: fd.get("description"), comment: fd.get("comment"), image, gallery, specs, detailsText, detailsFileUrl, detailsFileName };
     data.machines = existing ? data.machines.map((m) => m.id === id ? next : m) : [next, ...data.machines];
     await persistAdminData(adminMachines);
     });

@@ -361,13 +361,14 @@ function applyRemoteContent(remoteContent) {
 
 // ── Charger les données Supabase au démarrage ────────────────
 export async function loadRemoteData() {
-  const [orders, messages, appointments, trainingRequests, maintenanceRequests, accounts, remoteContent] = await Promise.all([
+  const [orders, messages, appointments, trainingRequests, maintenanceRequests, accounts, comments, remoteContent] = await Promise.all([
     sbSelect("orders"),
     sbSelect("messages"),
     sbSelect("appointments"),
     sbSelect("training_requests"),
     sbSelect("maintenance_requests"),
     sbSelect("customer_accounts", "last_login_at"),
+    sbSelect("machine_comments"),
     sbSelectContent(),
   ]);
   applyRemoteContent(remoteContent);
@@ -377,6 +378,7 @@ export async function loadRemoteData() {
   data.trainingRequests = trainingRequests.map(appRequestFromSupabase);
   data.maintenanceRequests = maintenanceRequests.map(appRequestFromSupabase);
   data.customerAccounts = accounts;
+  data.machineComments = comments.map(appRequestFromSupabase);
 }
 
 export async function refreshSiteContent() {
@@ -425,6 +427,15 @@ export async function addMaintenanceRequest(request) {
   data.maintenanceRequests.unshift(row);
   const saved = await sbInsert("maintenance_requests", requestToSupabase(row));
   if (!saved) localStorage.setItem(STORAGE_KEY, JSON.stringify(localContentSnapshot()));
+}
+
+export async function addMachineComment(comment) {
+  const row = { ...comment };
+  data.machineComments = data.machineComments || [];
+  data.machineComments.unshift(row);
+  const saved = await sbInsert("machine_comments", requestToSupabase(row));
+  if (!saved) throw new Error("Commentaire non synchronise. Verifiez votre connexion.");
+  return saved;
 }
 
 async function authErrorMessage(res, fallback) {

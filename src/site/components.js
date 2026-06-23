@@ -38,8 +38,8 @@ export function visualTitle(key, eyebrow) {
   const item = data.sectionMedia[key];
   return `
     <section class="visual-title">
-      ${mediaTag(item, tr(item.title))}
-      <div><p class="eyebrow">${tr(eyebrow)}</p><h1>${escapeHtml(tr(item.title))}</h1><p>${escapeHtml(tr(item.subtitle))}</p></div>
+      ${mediaTag(item, trField(item, "title"))}
+      <div><p class="eyebrow">${tr(eyebrow)}</p><h1>${escapeHtml(trField(item, "title"))}</h1><p>${escapeHtml(trField(item, "subtitle"))}</p></div>
     </section>
   `;
 }
@@ -203,10 +203,10 @@ export function requestIdentityFields() {
   const customer = customerIdentity();
   if (!customer) {
     return `
-      <label>Nom<input name="name" required></label>
-      <label>Prenom<input name="firstname"></label>
-      <label>Numero WhatsApp<input name="phone" required placeholder="+228 ..."></label>
-      <label>Email<input name="email" type="email" required placeholder="votre@email.com"></label>
+      <label>${tr("Nom")}<input name="name" required></label>
+      <label>${tr("Prenom")}<input name="firstname"></label>
+      <label>${tr("Numero WhatsApp")}<input name="phone" required placeholder="+228 ..."></label>
+      <label>${tr("Email")}<input name="email" type="email" required placeholder="votre@email.com"></label>
     `;
   }
   return `
@@ -244,10 +244,10 @@ export function machineCard(machine) {
   const pricing = discountedPrice(machine);
   return `
     <article class="item-card">
-      <img src="${machine.image}" alt="${escapeHtml(trField(machine, "name"))}">
+      <img src="${machine.image}" alt="${escapeHtml(trField(machine, "name"))}" data-link="/machines/${escapeHtml(machine.id)}" class="click-card">
       <div class="item-body">
         <span class="pill">${escapeHtml(trField(machine, "category"))}</span>
-        <h3>${escapeHtml(trField(machine, "name"))}</h3>
+        <h3 class="click-card" data-link="/machines/${escapeHtml(machine.id)}">${escapeHtml(trField(machine, "name"))}</h3>
         <p>${escapeHtml(trField(machine, "description"))}</p>
         <p class="comment">${escapeHtml(trField(machine, "comment"))}</p>
         <div class="item-foot">
@@ -257,6 +257,7 @@ export function machineCard(machine) {
           </div>
           <button class="primary small" data-order="${machine.id}">${t("action.order")}</button>
         </div>
+        <button class="ghost small machine-detail-link" data-link="/machines/${escapeHtml(machine.id)}">Voir les details</button>
       </div>
     </article>
   `;
@@ -267,12 +268,12 @@ export function orderForm(machine) {
     <section class="modal-backdrop" data-modal>
       <form id="order-form" class="panel form-panel order-modal">
         <div class="modal-head">
-          <div><p class="eyebrow">Commande</p><h2>${escapeHtml(tr(machine.name))}</h2></div>
-          <button type="button" class="ghost small" data-close-modal>Fermer</button>
+          <div><p class="eyebrow">${tr("Commande")}</p><h2>${escapeHtml(trField(machine, "name"))}</h2></div>
+          <button type="button" class="ghost small" data-close-modal>${tr("Fermer")}</button>
         </div>
         ${requestIdentityFields()}
-        <label>Precision sur le besoin<textarea name="message" rows="4" required placeholder="Quantite, ville, delai, details techniques"></textarea></label>
-        <button class="primary" type="submit">Envoyer la commande</button>
+        <label>${tr("Precision sur le besoin")}<textarea name="message" rows="4" required placeholder="${tr("Quantite, ville, precision technique...")}"></textarea></label>
+        <button class="primary" type="submit">${tr("Envoyer la commande")}</button>
       </form>
     </section>
   `;

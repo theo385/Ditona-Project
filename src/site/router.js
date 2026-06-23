@@ -35,6 +35,7 @@ import {
   loginPage,
   signupPage,
   machinesPage,
+  machineDetailPage,
   orderMachine,
   maintenanceDetailPage,
   maintenanceRequestPage,
@@ -54,7 +55,7 @@ const GUEST_STARTED_KEY = "ditona_guest_started_at";
 export function go(path) {
   history.pushState({}, "", path);
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 function bindGlobal() {
@@ -288,22 +289,23 @@ function setAdminMode(enabled) {
 
 export function render() {
   const path = location.pathname;
-  if (path === "/machines") return loadRemoteData().then(() => refreshSiteContent()).then(() => { machinesPage(); bindGlobal(); });
-  if (path.startsWith("/publicite/")) return loadRemoteData().then(() => refreshSiteContent()).then(() => { adDetailPage(path.split("/").pop()); bindGlobal(); });
-  if (path === "/realisations") return loadRemoteData().then(() => refreshSiteContent()).then(() => { realisationsPage(); bindGlobal(); });
-  if (path.startsWith("/realisations/")) return loadRemoteData().then(() => refreshSiteContent()).then(() => { realisationDetailPage(path.split("/").pop()); bindGlobal(); });
-  if (path === "/services") return loadRemoteData().then(() => refreshSiteContent()).then(() => { servicesPage(); bindGlobal(); });
-  if (path === "/services/demande") return loadRemoteData().then(() => refreshSiteContent()).then(() => { maintenanceRequestPage(); bindGlobal(); });
-  if (path.startsWith("/services/")) return loadRemoteData().then(() => refreshSiteContent()).then(() => { maintenanceDetailPage(path.split("/").pop()); bindGlobal(); });
-  if (path === "/formation") return loadRemoteData().then(() => refreshSiteContent()).then(() => { formationPage(); bindGlobal(); });
-  if (path.startsWith("/formation/")) return loadRemoteData().then(() => refreshSiteContent()).then(() => { trainingApplyPage(path.split("/").pop()); bindGlobal(); });
-  if (path === "/about") return loadRemoteData().then(() => { aboutPage(); bindGlobal(); });
-  if (path === "/rendez-vous") return loadRemoteData().then(() => { appointmentPage(); bindGlobal(); });
-  if (path === "/contact") return loadRemoteData().then(() => { contactPage(); bindGlobal(); });
-  if (path === "/forgot-password") return loadRemoteData().then(() => { forgotPasswordPage(); bindGlobal(); });
-  if (path === "/forgot-success") return loadRemoteData().then(() => { forgotSuccessPage(); bindGlobal(); });
-  if (path === "/signup-success") return loadRemoteData().then(() => { signupSuccessPage(); bindGlobal(); });
-  if (path === "/signup") return loadRemoteData().then(() => { signupPage(); bindGlobal(); });
+  if (path === "/machines") { machinesPage(); bindGlobal(); return; }
+  if (path.startsWith("/machines/")) { machineDetailPage(path.split("/").pop()); bindGlobal(); return; }
+  if (path.startsWith("/publicite/")) { adDetailPage(path.split("/").pop()); bindGlobal(); return; }
+  if (path === "/realisations") { realisationsPage(); bindGlobal(); return; }
+  if (path.startsWith("/realisations/")) { realisationDetailPage(path.split("/").pop()); bindGlobal(); return; }
+  if (path === "/services") { servicesPage(); bindGlobal(); return; }
+  if (path === "/services/demande") { maintenanceRequestPage(); bindGlobal(); return; }
+  if (path.startsWith("/services/")) { maintenanceDetailPage(path.split("/").pop()); bindGlobal(); return; }
+  if (path === "/formation") { formationPage(); bindGlobal(); return; }
+  if (path.startsWith("/formation/")) { trainingApplyPage(path.split("/").pop()); bindGlobal(); return; }
+  if (path === "/about") { aboutPage(); bindGlobal(); return; }
+  if (path === "/rendez-vous") { appointmentPage(); bindGlobal(); return; }
+  if (path === "/contact") { contactPage(); bindGlobal(); return; }
+  if (path === "/forgot-password") { forgotPasswordPage(); bindGlobal(); return; }
+  if (path === "/forgot-success") { forgotSuccessPage(); bindGlobal(); return; }
+  if (path === "/signup-success") { signupSuccessPage(); bindGlobal(); return; }
+  if (path === "/signup") { signupPage(); bindGlobal(); return; }
   if (path === "/reset-password") return loadRemoteData().then(() => resetPasswordPage().then(bindGlobal));
   if (path === "/login") {
     return loadRemoteData().then(() => loginPage().then(bindGlobal));
@@ -332,7 +334,9 @@ export function render() {
   }
   
   setAdminMode(false);
-  return loadRemoteData().then(() => refreshSiteContent()).then(() => { homePage(); bindGlobal(); });
+  homePage();
+  bindGlobal();
+  return;
 }
 
 export async function startApp() {

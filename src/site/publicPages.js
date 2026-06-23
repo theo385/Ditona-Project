@@ -1,6 +1,6 @@
-import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, addMaintenanceRequest, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession, uploadMediaFile } from "./store.js";
+import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, addMaintenanceRequest, addMachineComment, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession, uploadMediaFile } from "./store.js";
 import { machineCard, mediaTag, orderForm, publicShell, realisationCard, requestIdentityFields, serviceCard, setSlideTimer, visualTitle } from "./components.js";
-import { discountedPrice, escapeHtml } from "./format.js";
+import { discountedPrice, escapeHtml, money } from "./format.js";
 import { t, tr, trField } from "./i18n.js";
 
 export function homePage() {
@@ -81,6 +81,179 @@ export function machinesPage() {
   search.addEventListener("input", update);
   category.addEventListener("change", update);
   update();
+}
+
+function machineImages(machine) {
+  const rows = [
+    ...(machine.gallery || []).map((item) => item.url || item.image || item),
+    machine.image,
+    machine.backImage,
+  ].filter(Boolean);
+  return [...new Set(rows)];
+}
+
+function renderSpecs(machine) {
+  const specs = machine.specs?.length ? machine.specs : [
+    machine.category ? { key: "Categorie", value: trField(machine, "category") } : null,
+    machine.status ? { key: "Statut", value: trField(machine, "status") } : null,
+    machine.price ? { key: "Prix", value: `${machine.price} FCFA` } : null,
+  ].filter(Boolean);
+  if (!specs.length) return "";
+  return `
+    <section class="machine-detail-section">
+      <h2>Caracteristiques du produit</h2>
+      <div class="spec-table">
+        ${specs.map((spec) => `
+          <div class="spec-name">${escapeHtml(trField(spec, "key"))}</div>
+          <div class="spec-value">${escapeHtml(trField(spec, "value"))}</div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderDetailsText(text = "") {
+  const clean = String(text || "").trim();
+  if (!clean) return "";
+  const rows = clean.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const tableRows = rows
+    .map((line) => line.split(/\t|;|,/).map((cell) => cell.trim()).filter(Boolean))
+    .filter((cells) => cells.length > 1);
+  if (tableRows.length >= 2 && tableRows.length === rows.length) {
+    return `<div class="loaded-spec-table">${tableRows.map((cells) => `<div>${cells.map((cell) => `<span>${escapeHtml(cell)}</span>`).join("")}</div>`).join("")}</div>`;
+  }
+  return `<div class="loaded-spec-text">${rows.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div>`;
+}
+
+export function machineDetailPage(id) {
+  const machine = data.machines.find((row) => String(row.id) === String(id));
+  if (!machine) return machinesPage();
+  const images = machineImages(machine);
+  const pricing = discountedPrice(machine);
+  const comments = (data.machineComments || []).filter((comment) => String(comment.machineId || comment.machine_id) === String(machine.id));
+  const session = currentCustomer();
+  const recommendations = data.machines.filter((row) => String(row.id) !== String(machine.id)).slice(0, 10);
+
+  publicShell(`
+    <section class="machine-detail-page">
+      <div class="machine-gallery-panel">
+        <aside class="thumb-rail">
+          ${images.map((image, index) => `<button class="${index === 0 ? "active" : ""}" data-machine-thumb="${escapeHtml(image)}"><img src="${escapeHtml(image)}" alt="${escapeHtml(trField(machine, "name"))}"></button>`).join("")}
+        </aside>
+        <figure class="machine-main-image">
+          <img src="${escapeHtml(images[0] || machine.image)}" alt="${escapeHtml(trField(machine, "name"))}" data-machine-main>
+        </figure>
+      </div>
+      <aside class="machine-buy-panel">
+        <p class="eyebrow">${escapeHtml(trField(machine, "category"))}</p>
+        <h1>${escapeHtml(trField(machine, "name"))}</h1>
+        <a href="#machine-comments">Voir les avis</a>
+        <div class="machine-price-grid">
+          <strong>${money(pricing.finalPrice)}</strong>
+          ${pricing.discount ? `<span><del>${money(pricing.price)}</del><b>-${pricing.discount}%</b></span>` : ""}
+        </div>
+        <p>${escapeHtml(trField(machine, "description"))}</p>
+        ${machine.comment ? `<p class="machine-note">${escapeHtml(trField(machine, "comment"))}</p>` : ""}
+        <button class="primary" data-order="${escapeHtml(machine.id)}">Envoyer demande</button>
+        <button class="ghost" data-link="/contact">Discuter ici</button>
+      </aside>
+    </section>
+    <section class="machine-content-layout">
+      <div>
+        ${renderSpecs(machine)}
+        ${(machine.detailsText || machine.detailsFileUrl) ? `
+          <section class="machine-detail-section">
+            <h2>Caracteristiques detaillees</h2>
+            ${renderDetailsText(machine.detailsText)}
+            ${machine.detailsFileUrl ? `<a class="ghost small" href="${escapeHtml(machine.detailsFileUrl)}" target="_blank" rel="noopener">Ouvrir le fichier: ${escapeHtml(machine.detailsFileName || "document")}</a>` : ""}
+          </section>
+        ` : ""}
+        <section class="machine-detail-section" id="machine-comments">
+          <h2>Commentaires</h2>
+          ${session?.user ? `
+            <form id="machine-comment-form" class="comment-form">
+              <label>Votre commentaire<textarea name="message" rows="4" required></textarea></label>
+              <button class="primary" type="submit">Publier le commentaire</button>
+              <p class="form-message" data-comment-message></p>
+            </form>
+          ` : `
+            <div class="login-required">
+              <button class="primary" data-link="/signup">Creer un compte</button>
+              <button class="ghost" data-link="/login">Se connecter</button>
+            </div>
+          `}
+          <div class="comment-list">
+            ${comments.length ? comments.map((comment) => `
+              <article class="comment-row">
+                <strong>${escapeHtml(comment.name || comment.email || "Utilisateur")}</strong>
+                <small>${escapeHtml(comment.createdAt || comment.created_at || "")}</small>
+                <p>${escapeHtml(comment.message || "")}</p>
+              </article>
+            `).join("") : `<p class="empty">Aucun commentaire pour le moment.</p>`}
+          </div>
+        </section>
+        ${recommendations.length ? `
+          <section class="machine-detail-section">
+            <div class="recommendation-head">
+              <h2>Autres recommandations</h2>
+              <div>
+                <button class="ghost small" type="button" data-reco-prev aria-label="Precedent">‹</button>
+                <button class="ghost small" type="button" data-reco-next aria-label="Suivant">›</button>
+              </div>
+            </div>
+            <div class="recommendation-row" data-recommendation-row>
+              ${recommendations.map((item) => {
+                const itemPricing = discountedPrice(item);
+                return `
+                  <article data-link="/machines/${escapeHtml(item.id)}" class="recommendation-card">
+                    <img src="${escapeHtml(item.image)}" alt="${escapeHtml(trField(item, "name"))}">
+                    <strong>${escapeHtml(trField(item, "name"))}</strong>
+                    <span>${money(itemPricing.finalPrice)}</span>
+                  </article>
+                `;
+              }).join("")}
+            </div>
+          </section>
+        ` : ""}
+      </div>
+    </section>
+  `, "/machines");
+
+  document.querySelectorAll("[data-machine-thumb]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelector("[data-machine-main]").src = button.dataset.machineThumb;
+      document.querySelectorAll("[data-machine-thumb]").forEach((thumb) => thumb.classList.toggle("active", thumb === button));
+    });
+  });
+  document.querySelector("#machine-comment-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = document.querySelector("[data-comment-message]");
+    const fd = new FormData(event.target);
+    try {
+      const user = currentCustomer()?.user;
+      await addMachineComment({
+        id: "COM-" + Date.now().toString().slice(-6),
+        machineId: machine.id,
+        name: user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "Utilisateur",
+        email: user?.email || "",
+        message: fd.get("message"),
+        status: "Publie",
+        createdAt: today(),
+      });
+      machineDetailPage(machine.id);
+      window.ditonaBindGlobal?.();
+    } catch (err) {
+      message.textContent = err.message || "Commentaire impossible.";
+      message.classList.add("error");
+    }
+  });
+  const recommendationRow = document.querySelector("[data-recommendation-row]");
+  document.querySelector("[data-reco-prev]")?.addEventListener("click", () => {
+    recommendationRow?.scrollBy({ left: -Math.max(260, recommendationRow.clientWidth * 0.8), behavior: "smooth" });
+  });
+  document.querySelector("[data-reco-next]")?.addEventListener("click", () => {
+    recommendationRow?.scrollBy({ left: Math.max(260, recommendationRow.clientWidth * 0.8), behavior: "smooth" });
+  });
 }
 
 export function realisationsPage() {
@@ -259,7 +432,7 @@ export function maintenanceRequestPage() {
       seenAt: "",
       createdAt: today(),
     });
-    event.target.innerHTML = `<div class="success"><h2>${t("maintenance.submitted")}</h2><p>${t("maintenance.submittedMsg")}</p><button class="primary" data-link="/">Retour accueil</button></div>`;
+    event.target.innerHTML = `<div class="success"><h2>${t("maintenance.submitted")}</h2><p>${t("maintenance.submittedMsg")}</p><button class="primary" data-link="/">${tr("Retour accueil")}</button></div>`;
     window.ditonaBindGlobal();
   });
 }
@@ -294,9 +467,9 @@ export function trainingApplyPage(id) {
         <h2>${t("formations.applyTitle")}: ${trField(formation, "title")}</h2>
         ${requestIdentityFields()}
         <input name="training" type="hidden" value="${formation.title}">
-        <label>Niveau actuel<select name="level"><option>Debutant</option><option>Intermediaire</option><option>Avance</option><option>Entreprise / equipe</option></select></label>
-        <label>Objectif<textarea name="message" rows="5" required placeholder="Expliquez votre besoin, votre ville, le nombre de personnes"></textarea></label>
-        <button class="primary" type="submit">Envoyer la demande de formation</button>
+        <label>${tr("Niveau actuel")}<select name="level"><option>${tr("Debutant")}</option><option>${tr("Intermediaire")}</option><option>${tr("Avance")}</option><option>${tr("Entreprise / equipe")}</option></select></label>
+        <label>${tr("Objectif")}<textarea name="message" rows="5" required placeholder="${tr("Expliquez votre besoin, votre ville, le nombre de personnes")}"></textarea></label>
+        <button class="primary" type="submit">${tr("Envoyer la demande de formation")}</button>
       </form>
     </section>
   `, "/formation");
@@ -304,7 +477,7 @@ export function trainingApplyPage(id) {
     event.preventDefault();
     const fd = Object.fromEntries(new FormData(event.target));
     await addTrainingRequest({ id: "FOR-" + Date.now().toString().slice(-6), ...fd, subject: `Formation: ${fd.training}`, status: "Nouveau", reply: "", seenAt: "", createdAt: today() });
-    event.target.innerHTML = `<div class="success"><h2>Demande de formation envoyee</h2><button class="primary" data-link="/">Retour accueil</button></div>`;
+    event.target.innerHTML = `<div class="success"><h2>${tr("Demande de formation envoyee")}</h2><button class="primary" data-link="/">${tr("Retour accueil")}</button></div>`;
     window.ditonaBindGlobal();
   });
 }
