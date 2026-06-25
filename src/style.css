@@ -3038,3 +3038,64 @@ input[type="radio"][data-maintenance-origin] {
     padding: 13px;
   }
 }
+/* Avatar utilisateur - SANS fond */
+.user-avatar {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  color: white !important;
+  font-weight: 800 !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  background: #1e88e5 !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.user-connected {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.user-connected:hover {
+  background: transparent !important;
+}
+
+.user-connected .user-icon {
+  display: none !important;
+}
+
+@media (max-width: 680px) {
+  .user-avatar {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .user-connected small {
+    display: none !important;
+  }
+}
+
+
+@media (max-width: 680px) {
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+  
+  .user-connected small {
+    display: none; 
+  }
+}

@@ -58,6 +58,27 @@ function languagePicker() {
     </label>
   `;
 }
+function getUserInitials(nameOrEmail) {
+  if (!nameOrEmail) return "U";
+  if (nameOrEmail.includes("@")) {
+    return nameOrEmail.split("@")[0].substring(0, 2).toUpperCase();
+  }
+  const parts = nameOrEmail.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return nameOrEmail.substring(0, 2).toUpperCase();
+}
+
+function getUserAvatarColor(nameOrEmail) {
+  const colors = ["#1e88e5", "#43a047", "#e53935", "#8e24aa", "#fb8c00", "#00acc1", "#d81b60", "#5e35b1", "#3949ab", "#00897b", "#c0ca33", "#f4511e"];
+  let hash = 0;
+  for (let i = 0; i < nameOrEmail.length; i++) {
+    hash = ((hash << 5) - hash) + nameOrEmail.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
 
 export function publicShell(content, active = "") {
   clearTimers();
@@ -74,11 +95,10 @@ export function publicShell(content, active = "") {
         <div class="header-spacer"></div>
         ${languagePicker()}
         ${user ? `
-          <button class="header-action user-connected" data-link="/login" title="Mon compte">
-            <span class="user-icon"></span>
-            <small>${escapeHtml(displayName)}</small>
-          </button>
-        ` : `
+  <button class="header-action user-connected" data-link="/login" title="Mon compte">
+    <span class="user-avatar" style="background: ${getUserAvatarColor(user.email || user.user_metadata?.full_name || 'U')};">${getUserInitials(user.user_metadata?.full_name || user.email || 'U')}</span>
+  </button>
+` : `
           <button class="header-action login-action" data-link="/login" title="${t("action.login")}">
             <span class="user-icon"></span>
             <small>${t("action.login")}</small>

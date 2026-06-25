@@ -646,7 +646,7 @@ export async function updateTrainingRequest(id, updates) {
   await sbUpdate("training_requests", id, updates);
 }
 
-// ── API admin : supprimer ────────────────────────────────────
+
 export async function deleteOrder(id) {
   data.orders = data.orders.filter((o) => String(o.id) !== String(id));
   await sbDelete("orders", id);
