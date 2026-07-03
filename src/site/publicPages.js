@@ -206,7 +206,7 @@ export function machineDetailPage(id) {
                 const itemPricing = discountedPrice(item);
                 return `
                   <article data-link="/machines/${escapeHtml(item.id)}" class="recommendation-card">
-                    <img src="${escapeHtml(item.image)}" alt="${escapeHtml(trField(item, "name"))}">
+                    <img src="${escapeHtml(item.image)}" alt="${escapeHtml(trField(item, "name"))}" loading="lazy" decoding="async">
                     <strong>${escapeHtml(trField(item, "name"))}</strong>
                     <span>${money(itemPricing.finalPrice)}</span>
                   </article>
@@ -286,7 +286,7 @@ export function realisationDetailPage(id) {
           <div>
             <h2>${trField(step, "title")}</h2>
             <p>${trField(step, "description")}</p>
-            ${step.image ? `<img src="${step.image}" alt="${trField(step, "title")}" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;">` : ""}
+            ${step.image ? `<img src="${step.image}" alt="${trField(step, "title")}" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
           </div>
         </article>
       `).join("")}</div>
@@ -443,7 +443,7 @@ export function formationPage() {
     <section class="section">
       <div class="gallery-grid">${(data.formations || []).map((formation) => `
         <article class="item-card click-card" data-link="/formation/${formation.id}">
-          <img src="${formation.image}" alt="${trField(formation, "title")}">
+          <img src="${formation.image}" alt="${trField(formation, "title")}" loading="lazy" decoding="async">
           <div class="item-body">
             <span class="pill">${formation.available ? t("formations.available") : t("formations.unavailable")}</span>
             <h3>${trField(formation, "title")}</h3>

@@ -118,8 +118,50 @@ async function pkceChallenge(verifier) {
   return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+// ── Compression image avant upload ──────────────────────────
+// Redimensionne + compresse les photos côté navigateur pour éviter
+// d'envoyer des fichiers de plusieurs Mo qui ralentissent tout le site.
+async function compressImageFile(file, { maxWidth = 1600, maxHeight = 1600, quality = 0.8 } = {}) {
+  if (!file || !file.type?.startsWith("image/")) return file;
+  // On laisse passer sans y toucher : SVG (vectoriel) et GIF (peut être animé)
+  if (file.type === "image/svg+xml" || file.type === "image/gif") return file;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+
+    if (width <= maxWidth && height <= maxHeight) {
+      bitmap.close?.();
+      return file; // deja assez petite, inutile de la retoucher
+    }
+
+    const ratio = Math.min(maxWidth / width, maxHeight / height);
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", quality)
+    );
+    if (!blob) return file; // fallback si le navigateur refuse
+
+    const newName = (file.name || "photo").replace(/\.[a-zA-Z0-9]+$/, "") + ".jpg";
+    return new File([blob], newName, { type: "image/jpeg" });
+  } catch (err) {
+    console.warn("[compressImageFile] echec de compression, envoi du fichier original:", err);
+    return file; // en cas d'erreur, on n'empeche jamais l'upload
+  }
+}
+
 export async function uploadMediaFile(file, folder = "admin") {
   if (!file) return "";
+  file = await compressImageFile(file);
   const extension = file.name?.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
   const cleanFolder = String(folder).replace(/[^a-z0-9-]/gi, "-").toLowerCase();
   const path = `${cleanFolder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
