@@ -1,6 +1,12 @@
 import { adminItem, clearTimers, dashboardActivity, logo, messageConversation, requestConversation, requestConversationSimple } from "./components.js";
 import { countNew, escapeHtml } from "./format.js";
-import { data, getAdminPassword, isAdminLoggedIn, loginAdmin, logoutAdmin, saveData, setAdminPassword, today, updateOrder, updateMessage, updateAppointment, updateTrainingRequest, deleteOrder, deleteMessage, deleteAppointment, deleteTrainingRequest, deleteMaintenanceRequest, loadRemoteData, uploadMediaFile } from "./store.js";
+import {
+  data, isAdminLoggedIn, loginAdmin, logoutAdmin, saveData, today,
+  updateOrder, updateMessage, updateAppointment, updateTrainingRequest,
+  deleteOrder, deleteMessage, deleteAppointment, deleteTrainingRequest,
+  deleteMaintenanceRequest, loadRemoteData, uploadMediaFile,
+  adminAccessToken, changeAdminPassword, changeAdminEmail,
+} from "./store.js";
 
 const ADMIN_BASE = "/27ditona@ad07";
 
@@ -25,18 +31,37 @@ export function adminLogin() {
       <form id="login-form" class="panel login-panel">
         ${logo("login-brand")}
         <h1>Administration DITONA</h1>
-        <label>Mot de passe<input name="password" type="password" required placeholder="Mot de passe"></label>
-        <button class="primary">Connexion</button>
+        <label>E-mail<input name="email" type="email" required placeholder="admin@ditona.com" autocomplete="username"></label>
+        <label>Mot de passe<input name="password" type="password" required placeholder="Mot de passe" autocomplete="current-password"></label>
+        <p id="login-error" class="form-error" style="display:none; color:#c0392b;"></p>
+        <button class="primary" type="submit">Connexion</button>
         <button class="ghost" type="button" data-link="/">Retour au site</button>
       </form>
     </main>
   `;
   window.ditonaBindGlobal();
-  document.querySelector("#login-form").addEventListener("submit", (event) => {
+
+  const form = document.querySelector("#login-form");
+  const errorBox = document.querySelector("#login-error");
+  const submitBtn = form.querySelector("button.primary");
+
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (new FormData(event.target).get("password") !== getAdminPassword()) return alert("Mot de passe incorrect.");
-    loginAdmin();
-    window.ditonaGo(ADMIN_BASE);
+    errorBox.style.display = "none";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Connexion...";
+    try {
+      const fd = new FormData(form);
+      await loginAdmin(fd.get("email"), fd.get("password"));
+      window.ditonaGo(ADMIN_BASE);
+    } catch (err) {
+      console.warn("[adminLogin] echec:", err);
+      errorBox.textContent = "Identifiants incorrects.";
+      errorBox.style.display = "block";
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Connexion";
+    }
   });
 }
 
@@ -254,7 +279,6 @@ export function adminAds() {
   bindAdForm();
 }
 
-// MODIFIÉ - Formulaire Réalisations avec images pour chaque étape
 export function adminRealisations() {
   if (!requireAdmin()) return;
   adminShell(`
@@ -265,12 +289,12 @@ export function adminRealisations() {
       <label>Description courte<textarea name="comment" rows="3" required></textarea></label>
       <label>Image principale<input name="imageFile" type="file" accept="image/*"></label>
       <input name="image" placeholder="URL image principale">
-      
+
       <h3 style="margin-top:24px;">Etapes de realisation</h3>
       <p style="color:var(--muted); font-size:0.9rem; margin-bottom:16px;">Ajoutez chaque etape avec son titre, sa description et une image optionnelle</p>
       <div id="steps-container"></div>
       <button type="button" class="ghost small" id="add-step-btn">+ Ajouter une etape</button>
-      
+
       <button class="primary" style="margin-top:24px;">Enregistrer</button>
       <button class="ghost" type="reset">Nouveau</button>
     </form>
@@ -279,7 +303,6 @@ export function adminRealisations() {
   bindRealisationForm();
 }
 
-// MODIFIÉ - Formulaire Maintenance avec images pour problème, solution et historique
 export function adminServices() {
   if (!requireAdmin()) return;
   adminShell(`
@@ -289,22 +312,22 @@ export function adminServices() {
       <label>Titre<input name="title" required></label>
       <label>Image principale<input name="imageFile" type="file" accept="image/*"></label>
       <input name="image" placeholder="URL image principale">
-      
+
       <h3 style="margin-top:24px;">Probleme rencontre</h3>
       <label>Description du probleme<textarea name="problem" rows="3" required></textarea></label>
       <label>Photo du probleme<input name="problemImageFile" type="file" accept="image/*"></label>
       <input name="problemImage" placeholder="URL image probleme">
-      
+
       <h3 style="margin-top:24px;">Solution apportee</h3>
       <label>Description de la solution<textarea name="solution" rows="4" required></textarea></label>
       <label>Photo de la solution<input name="solutionImageFile" type="file" accept="image/*"></label>
       <input name="solutionImage" placeholder="URL image solution">
-      
+
       <h3 style="margin-top:24px;">Historique des interventions</h3>
       <p style="color:var(--muted); font-size:0.9rem; margin-bottom:16px;">Ajoutez chaque intervention avec date, probleme, solution et image optionnelle</p>
       <div id="history-container"></div>
       <button type="button" class="ghost small" id="add-history-btn">+ Ajouter une intervention</button>
-      
+
       <button class="primary" style="margin-top:24px;">Enregistrer</button>
       <button class="ghost" type="reset">Nouveau</button>
     </form>
@@ -392,40 +415,81 @@ export function adminAccounts() {
   `, "accounts");
 }
 
+// CORRIGE : ne compare plus a un mot de passe local. Le mot de
+// passe actuel est reverifie en le soumettant reellement a
+// Supabase Auth (voir changeAdminPassword dans store.js), et le
+// nouveau est applique via l'endpoint officiel Supabase.
 export function adminSettings() {
   if (!requireAdmin()) return;
   adminShell(`
     <div class="admin-head"><p class="eyebrow">Securite</p><h1>Changer le mot de passe</h1></div>
     <form id="password-form" class="panel password-panel">
-      <label>Mot de passe actuel<input name="current" type="password" required></label>
-      <label>Nouveau mot de passe<input name="next" type="password" required minlength="6"></label>
-      <label>Confirmer<input name="confirm" type="password" required minlength="6"></label>
-      <button class="primary">Mettre a jour</button>
+      <label>Mot de passe actuel<input name="current" type="password" required autocomplete="current-password"></label>
+      <label>Nouveau mot de passe<input name="next" type="password" required minlength="6" autocomplete="new-password"></label>
+      <label>Confirmer<input name="confirm" type="password" required minlength="6" autocomplete="new-password"></label>
+      <button class="primary" type="submit">Mettre a jour</button>
       <p class="form-message" data-password-message></p>
     </form>
+
+    <div class="admin-head secondary-head"><p class="eyebrow">Securite</p><h1>Changer l'adresse e-mail</h1></div>
+    <form id="email-form" class="panel password-panel">
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:16px;">Un lien de confirmation sera envoye a la nouvelle adresse</p>
+      <label>Mot de passe actuel<input name="currentForEmail" type="password" required autocomplete="current-password"></label>
+      <label>Nouvelle adresse e-mail<input name="newEmail" type="email" required autocomplete="email"></label>
+      <button class="primary" type="submit">Envoyer le lien de confirmation</button>
+      <p class="form-message" data-email-message></p>
+    </form>
   `, "settings");
-  document.querySelector("#password-form").addEventListener("submit", (event) => {
+
+  document.querySelector("#password-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const message = document.querySelector("[data-password-message]");
     const fd = new FormData(event.target);
-    
+    const submitBtn = event.target.querySelector("button.primary");
+
     message.textContent = "";
     message.className = "form-message";
-    
-    if (fd.get("current") !== getAdminPassword()) {
-      message.textContent = "Mot de passe actuel incorrect.";
-      message.classList.add("error");
-      return;
-    }
+
     if (fd.get("next") !== fd.get("confirm")) {
       message.textContent = "Les nouveaux mots de passe ne correspondent pas.";
       message.classList.add("error");
       return;
     }
-    setAdminPassword(fd.get("next"));
-    message.textContent = "Mot de passe modifie avec succes.";
-    message.classList.add("success");
-    event.target.reset();
+
+    submitBtn.disabled = true;
+    try {
+      await changeAdminPassword(fd.get("current"), fd.get("next"));
+      message.textContent = "Mot de passe modifie avec succes.";
+      message.classList.add("success");
+      event.target.reset();
+    } catch (err) {
+      message.textContent = err.message || "Mot de passe actuel incorrect.";
+      message.classList.add("error");
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  document.querySelector("#email-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = document.querySelector("[data-email-message]");
+    const fd = new FormData(event.target);
+    const submitBtn = event.target.querySelector("button.primary");
+
+    message.textContent = "";
+    message.className = "form-message";
+    submitBtn.disabled = true;
+    try {
+      await changeAdminEmail(fd.get("currentForEmail"), fd.get("newEmail"));
+      message.textContent = "Lien de confirmation envoye a la nouvelle adresse. Le changement prendra effet apres validation du lien.";
+      message.classList.add("success");
+      event.target.reset();
+    } catch (err) {
+      message.textContent = err.message || "Modification impossible.";
+      message.classList.add("error");
+    } finally {
+      submitBtn.disabled = false;
+    }
   });
 }
 
@@ -617,13 +681,11 @@ function bindAdForm() {
   });
 }
 
-// MODIFIÉ - Gestion des étapes avec images multiples
 function bindRealisationForm() {
   const form = document.querySelector("#realisation-form");
   const stepsContainer = document.querySelector("#steps-container");
   const addStepBtn = document.querySelector("#add-step-btn");
-  
-  // Fonction pour ajouter une étape
+
   function addStep(step = {}) {
     const stepIndex = stepsContainer.children.length;
     const stepDiv = document.createElement("div");
@@ -646,14 +708,11 @@ function bindRealisationForm() {
     stepsContainer.innerHTML = "";
     (item.steps || []).forEach(step => addStep(step));
   }
-  
-  // Bouton ajouter étape
+
   addStepBtn?.addEventListener("click", () => addStep());
-  
-  // Charger les étapes existantes si modification
   form.addEventListener("ditona:fill", (event) => loadSteps(event.detail || {}));
   form.addEventListener("reset", () => setTimeout(() => stepsContainer.innerHTML = "", 0));
-  
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     await submitAdminForm(async () => {
@@ -661,8 +720,7 @@ function bindRealisationForm() {
       const id = fd.get("id") ? Number(fd.get("id")) : Date.now();
       const existing = data.realisations.find((r) => r.id === id);
       const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "realisations");
-      
-      // Collecter toutes les étapes
+
       const steps = [];
       const stepEntries = stepsContainer.querySelectorAll(".step-entry");
       for (const entry of stepEntries) {
@@ -672,12 +730,12 @@ function bindRealisationForm() {
         const imageInput = form.querySelector(`input[name="step-image-file-${i}"]`);
         const existingImage = fd.get(`step-image-${i}`);
         const stepImage = await readImage(imageInput, existingImage || "", "realisations-steps");
-        
+
         if (title && description) {
           steps.push({ title, description, image: stepImage });
         }
       }
-      
+
       const next = { id, title: fd.get("title"), comment: fd.get("comment"), image, steps };
       data.realisations = existing ? data.realisations.map((r) => r.id === id ? next : r) : [next, ...data.realisations];
       await persistAdminData(adminRealisations);
@@ -709,13 +767,11 @@ function bindSectionMediaForm() {
   load();
 }
 
-// MODIFIÉ - Gestion des images pour problème, solution et historique
 function bindServiceForm() {
   const form = document.querySelector("#service-form");
   const historyContainer = document.querySelector("#history-container");
   const addHistoryBtn = document.querySelector("#add-history-btn");
-  
-  // Fonction pour ajouter une intervention
+
   function addHistory(entry = {}) {
     const entryIndex = historyContainer.children.length;
     const entryDiv = document.createElement("div");
@@ -739,14 +795,11 @@ function bindServiceForm() {
     historyContainer.innerHTML = "";
     (item.history || []).forEach(entry => addHistory(entry));
   }
-  
-  // Bouton ajouter intervention
+
   addHistoryBtn?.addEventListener("click", () => addHistory());
-  
-  // Charger les interventions existantes si modification
   form.addEventListener("ditona:fill", (event) => loadHistory(event.detail || {}));
   form.addEventListener("reset", () => setTimeout(() => historyContainer.innerHTML = "", 0));
-  
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     await submitAdminForm(async () => {
@@ -755,16 +808,13 @@ function bindServiceForm() {
       data.maintenanceServices = data.maintenanceServices || [];
       const existing = data.maintenanceServices.find((s) => s.id === id);
       const image = await readImage(form.imageFile, fd.get("image") || existing?.image, "services");
-      
-      // Image problème
+
       const problemImageInput = form.querySelector('input[name="problemImageFile"]');
       const problemImage = await readImage(problemImageInput, fd.get("problemImage") || existing?.problemImage || "", "services-problem");
-      
-      // Image solution
+
       const solutionImageInput = form.querySelector('input[name="solutionImageFile"]');
       const solutionImage = await readImage(solutionImageInput, fd.get("solutionImage") || existing?.solutionImage || "", "services-solution");
-      
-      // Collecter toutes les interventions
+
       const history = [];
       const historyEntries = historyContainer.querySelectorAll(".history-entry");
       for (const entry of historyEntries) {
@@ -775,22 +825,22 @@ function bindServiceForm() {
         const imageInput = form.querySelector(`input[name="history-image-file-${i}"]`);
         const existingImage = fd.get(`history-image-${i}`);
         const entryImage = await readImage(imageInput, existingImage || "", "services-history");
-        
+
         if (problem && solution) {
           history.push({ date, problem, solution, image: entryImage });
         }
       }
-      
-      const next = { 
-        id, 
-        title: fd.get("title"), 
-        problem: fd.get("problem"), 
+
+      const next = {
+        id,
+        title: fd.get("title"),
+        problem: fd.get("problem"),
         problemImage,
-        solution: fd.get("solution"), 
+        solution: fd.get("solution"),
         solutionImage,
-        text: fd.get("solution"), 
-        history, 
-        image 
+        text: fd.get("solution"),
+        history,
+        image
       };
       data.maintenanceServices = existing ? data.maintenanceServices.map((s) => s.id === id ? next : s) : [next, ...data.maintenanceServices];
       await persistAdminData(adminServices);

@@ -1,4 +1,3 @@
-export const DEFAULT_ADMIN_PASSWORD = "admin1234";
 export const defaults = {
   sectionMedia: {
     machines: { type: "image", title: "Machines et prix", subtitle: "Consultez les solutions disponibles et envoyez une demande d'achat.", image: "/realisations/cnc-3w-iso.jpeg", backImage: "/realisations/cnc-3w-noir.jpeg" },

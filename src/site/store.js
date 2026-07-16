@@ -1,15 +1,7 @@
-import { DEFAULT_ADMIN_PASSWORD, defaults } from "./defaults.js";
+import { defaults } from "./defaults.js";
 
 import { adminItem, clearTimers, dashboardActivity, logo, messageConversation, requestConversation } from "./components.js";
 import { countNew } from "./format.js";
-
-export function requireAdmin() {
-  if (!isAdminLoggedIn()) {
-    adminLogin();
-    return false;
-  }
-  return true;
-}
 
 // ── Supabase config ─────────────────────────────────────────
 const SUPABASE_URL = "https://zwbwsiyvoqdpxyqiylfb.supabase.co";
@@ -27,10 +19,22 @@ const upsertHeaders = {
   "Prefer": "resolution=merge-duplicates,return=representation",
 };
 
+// Construit des en-têtes authentifiés avec un jeton precis (client
+// ou admin) au lieu de la seule clé publique. Quand un jeton est
+// fourni, il remplace l'autorisation anonyme -- c'est ce qui permet
+// aux policies RLS de reconnaitre auth.uid() côté serveur.
+function authHeaders(token) {
+  if (!token) return headers;
+  return { ...headers, "Authorization": `Bearer ${token}` };
+}
+function authUpsertHeaders(token) {
+  if (!token) return upsertHeaders;
+  return { ...upsertHeaders, "Authorization": `Bearer ${token}` };
+}
+
 // ── Clés localStorage ─
 export const STORAGE_KEY = "ditona_site_data_v3";
 export const SESSION_KEY = "ditona_admin_session";
-export const PASSWORD_KEY = "ditona_admin_password";
 export const CUSTOMER_SESSION_KEY = "ditona_customer_session";
 export const GUEST_STARTED_KEY = "ditona_guest_started_at";
 
@@ -40,11 +44,11 @@ export function clone(value) {
 
 // ── Helpers Supabase REST ───────────────────────────────────
 
-async function sbSelect(table, order = "created_at") {
+async function sbSelect(table, order = "created_at", token = null) {
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/${table}?order=${order}.desc`,
-      { headers }
+      { headers: authHeaders(token) }
     );
     if (!res.ok) throw new Error(await res.text());
     return await res.json();
@@ -84,11 +88,11 @@ async function sbInsert(table, row) {
   }
 }
 
-async function sbUpsert(table, row, conflictKey = "id") {
+async function sbUpsert(table, row, conflictKey = "id", token = null) {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${conflictKey}`, {
       method: "POST",
-      headers: upsertHeaders,
+      headers: authUpsertHeaders(token),
       body: JSON.stringify(row),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -119,11 +123,8 @@ async function pkceChallenge(verifier) {
 }
 
 // ── Compression image avant upload ──────────────────────────
-// Redimensionne + compresse les photos côté navigateur pour éviter
-// d'envoyer des fichiers de plusieurs Mo qui ralentissent tout le site.
 async function compressImageFile(file, { maxWidth = 1600, maxHeight = 1600, quality = 0.8 } = {}) {
   if (!file || !file.type?.startsWith("image/")) return file;
-  // On laisse passer sans y toucher : SVG (vectoriel) et GIF (peut être animé)
   if (file.type === "image/svg+xml" || file.type === "image/gif") return file;
 
   try {
@@ -132,7 +133,7 @@ async function compressImageFile(file, { maxWidth = 1600, maxHeight = 1600, qual
 
     if (width <= maxWidth && height <= maxHeight) {
       bitmap.close?.();
-      return file; // deja assez petite, inutile de la retoucher
+      return file;
     }
 
     const ratio = Math.min(maxWidth / width, maxHeight / height);
@@ -149,22 +150,25 @@ async function compressImageFile(file, { maxWidth = 1600, maxHeight = 1600, qual
     const blob = await new Promise((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", quality)
     );
-    if (!blob) return file; // fallback si le navigateur refuse
+    if (!blob) return file;
 
     const newName = (file.name || "photo").replace(/\.[a-zA-Z0-9]+$/, "") + ".jpg";
     return new File([blob], newName, { type: "image/jpeg" });
   } catch (err) {
     console.warn("[compressImageFile] echec de compression, envoi du fichier original:", err);
-    return file; // en cas d'erreur, on n'empeche jamais l'upload
+    return file;
   }
 }
 
+// Upload de médias : réservé à l'admin depuis la correction RLS
+// (media_admin_insert). On envoie donc le jeton admin.
 export async function uploadMediaFile(file, folder = "admin") {
   if (!file) return "";
   file = await compressImageFile(file);
   const extension = file.name?.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
   const cleanFolder = String(folder).replace(/[^a-z0-9-]/gi, "-").toLowerCase();
   const path = `${cleanFolder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+  const token = adminAccessToken();
   let lastError = "";
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -172,7 +176,7 @@ export async function uploadMediaFile(file, folder = "admin") {
         method: "POST",
         headers: {
           "apikey": SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Authorization": `Bearer ${token || SUPABASE_ANON_KEY}`,
           "Content-Type": file.type || "application/octet-stream",
           "x-upsert": "true",
         },
@@ -189,11 +193,12 @@ export async function uploadMediaFile(file, folder = "admin") {
   throw new Error(lastError || "Upload impossible vers le cloud.");
 }
 
+// site_content : lecture publique, écriture admin uniquement.
 async function sbUpsertContent(value) {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/site_content?on_conflict=key`, {
       method: "POST",
-      headers: upsertHeaders,
+      headers: authUpsertHeaders(adminAccessToken()),
       body: JSON.stringify({ key: "main", value, updated_at: new Date().toISOString() }),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -204,13 +209,13 @@ async function sbUpsertContent(value) {
   }
 }
 
-async function sbUpdate(table, id, updates) {
+async function sbUpdate(table, id, updates, token = null) {
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
       {
         method: "PATCH",
-        headers,
+        headers: authHeaders(token),
         body: JSON.stringify(updates),
       }
     );
@@ -222,11 +227,11 @@ async function sbUpdate(table, id, updates) {
   }
 }
 
-async function sbDelete(table, id) {
+async function sbDelete(table, id, token = null) {
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
-      { method: "DELETE", headers }
+      { method: "DELETE", headers: authHeaders(token) }
     );
     if (!res.ok) throw new Error(await res.text());
     return true;
@@ -329,34 +334,13 @@ function appRequestFromSupabase(row = {}) {
 
 function requestToSupabase(row = {}) {
   const next = { ...row };
-  if ("machineId" in next) {
-    next.machine_id = next.machineId;
-    delete next.machineId;
-  }
-  if ("autoReply" in next) {
-    next.auto_reply = next.autoReply;
-    delete next.autoReply;
-  }
-  if ("photoUrl" in next) {
-    next.photo_url = next.photoUrl;
-    delete next.photoUrl;
-  }
-  if ("photoName" in next) {
-    next.photo_name = next.photoName;
-    delete next.photoName;
-  }
-  if ("purchasedFromDitona" in next) {
-    next.purchased_from_ditona = next.purchasedFromDitona;
-    delete next.purchasedFromDitona;
-  }
-  if ("seenAt" in next) {
-    next.seen_at = next.seenAt;
-    delete next.seenAt;
-  }
-  if ("createdAt" in next) {
-    next.created_at = next.createdAt;
-    delete next.createdAt;
-  }
+  if ("machineId" in next) { next.machine_id = next.machineId; delete next.machineId; }
+  if ("autoReply" in next) { next.auto_reply = next.autoReply; delete next.autoReply; }
+  if ("photoUrl" in next) { next.photo_url = next.photoUrl; delete next.photoUrl; }
+  if ("photoName" in next) { next.photo_name = next.photoName; delete next.photoName; }
+  if ("purchasedFromDitona" in next) { next.purchased_from_ditona = next.purchasedFromDitona; delete next.purchasedFromDitona; }
+  if ("seenAt" in next) { next.seen_at = next.seenAt; delete next.seenAt; }
+  if ("createdAt" in next) { next.created_at = next.createdAt; delete next.createdAt; }
   return next;
 }
 
@@ -402,15 +386,22 @@ function applyRemoteContent(remoteContent) {
 }
 
 // ── Charger les données Supabase au démarrage ────────────────
+// IMPORTANT (post-correction RLS) : orders/messages/appointments/
+// training_requests/maintenance_requests/customer_accounts ne sont
+// lisibles que par un admin authentifié. Sur le site public (visiteur
+// non-admin), ces tableaux reviendront volontairement vides -- c'est
+// le comportement voulu, pas un bug : un visiteur ne doit jamais
+// voir les commandes ou messages des autres.
 export async function loadRemoteData() {
+  const token = adminAccessToken();
   const [orders, messages, appointments, trainingRequests, maintenanceRequests, accounts, comments, remoteContent] = await Promise.all([
-    sbSelect("orders"),
-    sbSelect("messages"),
-    sbSelect("appointments"),
-    sbSelect("training_requests"),
-    sbSelect("maintenance_requests"),
-    sbSelect("customer_accounts", "last_login_at"),
-    sbSelect("machine_comments"),
+    sbSelect("orders", "created_at", token),
+    sbSelect("messages", "created_at", token),
+    sbSelect("appointments", "created_at", token),
+    sbSelect("training_requests", "created_at", token),
+    sbSelect("maintenance_requests", "created_at", token),
+    sbSelect("customer_accounts", "last_login_at", token),
+    sbSelect("machine_comments"), // lecture publique (commentaires publiés)
     sbSelectContent(),
   ]);
   applyRemoteContent(remoteContent);
@@ -428,7 +419,7 @@ export async function refreshSiteContent() {
   return applyRemoteContent(remoteContent);
 }
 
-// ── saveData ─────────────────────────────────────────────────
+// ── saveData (édition du contenu du site, admin uniquement) ───
 export async function saveData() {
   const localOnly = localContentSnapshot();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(localOnly));
@@ -438,7 +429,7 @@ export async function saveData() {
   return true;
 }
 
-// ── API publique : ajouter ───────────────────────────────────
+// ── API publique : ajouter (formulaires ouverts à tous) ───────
 export async function addOrder(order) {
   const row = { ...order };
   data.orders.unshift(row);
@@ -492,6 +483,7 @@ async function authErrorMessage(res, fallback) {
   }
 }
 
+// ── Auth client (Supabase Auth — inchangé, déjà correct) ──────
 export async function loginCustomer(email, password) {
   const cleanEmail = String(email || "").trim().toLowerCase();
   const cleanPassword = String(password || "");
@@ -504,7 +496,7 @@ export async function loginCustomer(email, password) {
   if (!res.ok) throw new Error(await authErrorMessage(res, "Connexion impossible. Verifiez l'e-mail et le mot de passe."));
   const session = await res.json();
   if (!session.access_token) throw new Error("Connexion incomplete. Verifiez votre e-mail.");
-  await rememberCustomer(session.user, "email");
+  await rememberCustomer(session.user, "email", session.access_token);
   sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
   return session;
 }
@@ -524,7 +516,7 @@ export async function signupCustomer(email, password, role = "acheteur", confirm
   if (!res.ok) throw new Error(await authErrorMessage(res, "Inscription impossible. Essayez un autre e-mail."));
   const session = await res.json();
   if (!session.access_token) return { pendingConfirmation: true, user: { id: cleanEmail, email: cleanEmail } };
-  await rememberCustomer(session.user || { id: cleanEmail, email: cleanEmail }, role);
+  await rememberCustomer(session.user || { id: cleanEmail, email: cleanEmail }, role, session.access_token);
   sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
   return session;
 }
@@ -549,7 +541,7 @@ async function sessionFromAccessToken(accessToken) {
   const user = await res.json();
   const session = { access_token: accessToken, user };
   sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
-  await rememberCustomer(user, localStorage.getItem("ditona_customer_role") || "google");
+  await rememberCustomer(user, localStorage.getItem("ditona_customer_role") || "google", accessToken);
   history.replaceState({}, "", "/login");
   return session;
 }
@@ -570,7 +562,7 @@ export async function restoreCustomerFromUrl() {
     const session = await res.json();
     if (!session.access_token) return null;
     sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
-    await rememberCustomer(session.user, localStorage.getItem("ditona_customer_role") || "google");
+    await rememberCustomer(session.user, localStorage.getItem("ditona_customer_role") || "google", session.access_token);
     history.replaceState({}, "", "/login");
     return session;
   }
@@ -593,7 +585,10 @@ export function logoutCustomer() {
   sessionStorage.removeItem(CUSTOMER_SESSION_KEY);
 }
 
-async function rememberCustomer(user, role) {
+// rememberCustomer : écrit désormais avec le jeton DU CLIENT
+// lui-même (auth.uid() = son propre id), condition requise par la
+// nouvelle policy customer_self_insert / customer_self_update.
+async function rememberCustomer(user, role, token = null) {
   if (!user?.email && !user?.id) return;
   await sbUpsert("customer_accounts", {
     id: user.id || user.email,
@@ -602,23 +597,23 @@ async function rememberCustomer(user, role) {
     role,
     provider: user.app_metadata?.provider || role,
     last_login_at: new Date().toISOString(),
-  });
+  }, "id", token);
 }
 
-// ─ API publique : réinitialisation mot de passe ────────────
+// ─ API publique : réinitialisation mot de passe (clients) ──────
 export async function requestPasswordReset(email) {
   const cleanEmail = String(email || "").trim().toLowerCase();
   if (!cleanEmail) throw new Error("E-mail requis.");
-  
+
   const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ 
+    body: JSON.stringify({
       email: cleanEmail,
       redirectTo: `${location.origin}/reset-password`
     }),
   });
-  
+
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.msg || error.error_description || "Envoi impossible. Verifiez l'e-mail.");
@@ -630,7 +625,7 @@ export async function resetPassword(newPassword, accessToken) {
   if (!newPassword || newPassword.length < 6) {
     throw new Error("Le mot de passe doit contenir au moins 6 caracteres.");
   }
-  
+
   const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     method: "PUT",
     headers: {
@@ -639,7 +634,7 @@ export async function resetPassword(newPassword, accessToken) {
     },
     body: JSON.stringify({ password: newPassword }),
   });
-  
+
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.msg || error.error_description || "Modification impossible.");
@@ -653,86 +648,186 @@ export async function exchangeCodeForSession(code) {
     headers,
     body: JSON.stringify({ auth_code: code }),
   });
-  
+
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.msg || error.error_description || "Lien invalide ou expire.");
   }
-  
+
   const session = await res.json();
   return session.access_token;
 }
 
-// ── API admin : mettre à jour ────────────────────────────────
+// ── API admin : mettre à jour (jeton admin requis par le RLS) ──
 export async function updateOrder(id, updates) {
   const item = data.orders.find((o) => String(o.id) === String(id));
   if (item) Object.assign(item, appRequestFromSupabase(updates));
-  await sbUpdate("orders", id, updates);
+  await sbUpdate("orders", id, updates, adminAccessToken());
 }
 
 export async function updateMessage(id, updates) {
   const item = data.messages.find((m) => String(m.id) === String(id));
   if (item) Object.assign(item, appRequestFromSupabase(updates));
-  await sbUpdate("messages", id, updates);
+  await sbUpdate("messages", id, updates, adminAccessToken());
 }
 
 export async function updateAppointment(id, updates) {
   const item = data.appointments.find((a) => String(a.id) === String(id));
   if (item) Object.assign(item, appRequestFromSupabase(updates));
-  await sbUpdate("appointments", id, updates);
+  await sbUpdate("appointments", id, updates, adminAccessToken());
 }
 
 export async function updateTrainingRequest(id, updates) {
   const item = data.trainingRequests.find((t) => String(t.id) === String(id));
   if (item) Object.assign(item, appRequestFromSupabase(updates));
-  await sbUpdate("training_requests", id, updates);
+  await sbUpdate("training_requests", id, updates, adminAccessToken());
 }
-
 
 export async function deleteOrder(id) {
   data.orders = data.orders.filter((o) => String(o.id) !== String(id));
-  await sbDelete("orders", id);
+  await sbDelete("orders", id, adminAccessToken());
 }
 
 export async function deleteMessage(id) {
   data.messages = data.messages.filter((m) => String(m.id) !== String(id));
-  await sbDelete("messages", id);
+  await sbDelete("messages", id, adminAccessToken());
 }
 
 export async function deleteAppointment(id) {
   data.appointments = data.appointments.filter((a) => String(a.id) !== String(id));
-  await sbDelete("appointments", id);
+  await sbDelete("appointments", id, adminAccessToken());
 }
 
 export async function deleteTrainingRequest(id) {
   data.trainingRequests = data.trainingRequests.filter((t) => String(t.id) !== String(id));
-  await sbDelete("training_requests", id);
+  await sbDelete("training_requests", id, adminAccessToken());
 }
 
 export async function deleteMaintenanceRequest(id) {
   data.maintenanceRequests = (data.maintenanceRequests || []).filter((t) => String(t.id) !== String(id));
-  await sbDelete("maintenance_requests", id);
+  await sbDelete("maintenance_requests", id, adminAccessToken());
 }
 
-// ── Auth admin ───────────────────────────────────────────────
-export function getAdminPassword() {
-  return localStorage.getItem(PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
+// ── Auth admin (Supabase Auth — session JWT vérifiable serveur) ─
+// Remplace intégralement l'ancien mécanisme (mot de passe en clair
+// dans localStorage + simple flag sessionStorage, contournable
+// depuis la console du navigateur).
+let _adminSession = null;
+
+function loadAdminSessionFromStorage() {
+  if (_adminSession) return _adminSession;
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+    if (stored?.access_token) _adminSession = stored;
+  } catch {
+    _adminSession = null;
+  }
+  return _adminSession;
 }
 
-export function setAdminPassword(password) {
-  localStorage.setItem(PASSWORD_KEY, password);
+export async function loginAdmin(email, password) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const cleanPassword = String(password || "");
+  if (!cleanEmail || !cleanPassword) throw new Error("E-mail et mot de passe requis.");
+
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
+  });
+  if (!res.ok) throw new Error("Identifiants incorrects.");
+  const session = await res.json();
+
+  // Vérification côté serveur du statut admin : la table
+  // admin_profiles est protégée par RLS (chacun ne lit que sa
+  // propre ligne), donc cette vérification ne peut pas être
+  // falsifiée depuis le navigateur.
+  const check = await fetch(
+    `${SUPABASE_URL}/rest/v1/admin_profiles?user_id=eq.${session.user.id}&select=user_id`,
+    { headers: authHeaders(session.access_token) }
+  );
+  const rows = await check.json();
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new Error("Ce compte ne dispose pas des droits administrateur.");
+  }
+
+  _adminSession = session;
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  return session;
 }
 
 export function isAdminLoggedIn() {
-  return sessionStorage.getItem(SESSION_KEY) === "true";
+  return !!loadAdminSessionFromStorage()?.access_token;
 }
 
-export function loginAdmin() {
-  sessionStorage.setItem(SESSION_KEY, "true");
+export function adminAccessToken() {
+  return loadAdminSessionFromStorage()?.access_token || null;
 }
 
 export function logoutAdmin() {
+  _adminSession = null;
   sessionStorage.removeItem(SESSION_KEY);
+}
+
+// Changement de mot de passe admin : revérifie le mot de passe
+// ACTUEL en le soumettant réellement à Supabase (pas une comparaison
+// locale), avant d'appliquer le nouveau via l'endpoint officiel.
+export async function changeAdminPassword(currentPassword, newPassword) {
+  const session = loadAdminSessionFromStorage();
+  if (!session?.user?.email) throw new Error("Session expiree. Reconnectez-vous.");
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error("Le nouveau mot de passe doit contenir au moins 6 caracteres.");
+  }
+
+  const verify = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ email: session.user.email, password: String(currentPassword || "") }),
+  });
+  if (!verify.ok) throw new Error("Mot de passe actuel incorrect.");
+
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: "PUT",
+    headers: authHeaders(session.access_token),
+    body: JSON.stringify({ password: newPassword }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.msg || error.error_description || "Modification impossible.");
+  }
+  return true;
+}
+
+// Changement d'email admin : revérifie le mot de passe actuel (même
+// principe que changeAdminPassword), puis demande à Supabase le
+// changement d'email. Supabase enverra un lien de confirmation à
+// la nouvelle adresse (et selon la config du projet, également à
+// l'ancienne) -- le changement ne devient effectif qu'après clic
+// sur ce lien, jamais immediatement depuis le code.
+export async function changeAdminEmail(currentPassword, newEmail) {
+  const session = loadAdminSessionFromStorage();
+  if (!session?.user?.email) throw new Error("Session expiree. Reconnectez-vous.");
+  const cleanEmail = String(newEmail || "").trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes("@")) throw new Error("Adresse e-mail invalide.");
+  if (cleanEmail === session.user.email) throw new Error("Cette adresse est deja utilisee sur ce compte.");
+
+  const verify = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ email: session.user.email, password: String(currentPassword || "") }),
+  });
+  if (!verify.ok) throw new Error("Mot de passe actuel incorrect.");
+
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: "PUT",
+    headers: authHeaders(session.access_token),
+    body: JSON.stringify({ email: cleanEmail }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.msg || error.error_description || "Modification impossible.");
+  }
+  return true;
 }
 
 export function today() {
