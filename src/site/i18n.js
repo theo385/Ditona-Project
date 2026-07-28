@@ -787,7 +787,11 @@ export async function autoTranslateItem(item, fields = []) {
     for (const field of fields) {
       const source = cleanDisplayText(next[field] || "");
       if (!source) continue;
-      next.translations[lang][field] = await translateTextOnline(source, lang);
+      const translated = await translateTextOnline(source, lang);
+      // Do not save the French source as an English translation when the
+      // translation service is temporarily unavailable.
+      if (translated && translated !== source) next.translations[lang][field] = translated;
+      else delete next.translations[lang][field];
     }
   }
   return next;

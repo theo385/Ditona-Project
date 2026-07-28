@@ -7,6 +7,7 @@ import {
   deleteMaintenanceRequest, loadRemoteData, uploadMediaFile,
   adminAccessToken, changeAdminPassword, changeAdminEmail,
 } from "./store.js";
+import { autoTranslateItem } from "./i18n.js";
 
 const ADMIN_BASE = "/27ditona@ad07";
 
@@ -154,7 +155,49 @@ export function adminDashboard() {
       <div class="section-head compact"><div><p class="eyebrow">Activite</p><h2>Demandes recentes</h2></div></div>
       <div class="activity-list">${dashboardActivity()}</div>
     </section>
+    <section class="panel dashboard-panel">
+      <h2>Traductions anglaises</h2>
+      <p>Generez et enregistrez les versions anglaises des contenus ajoutes dans l'administration</p>
+      <button class="primary" type="button" data-translate-admin-content>Traduire le contenu en anglais</button>
+      <p class="form-message" data-translation-message></p>
+    </section>
   `, "dashboard");
+  document.querySelector("[data-translate-admin-content]")?.addEventListener("click", translateAdminContentToEnglish);
+}
+
+async function translateRecord(item, fields, nested = {}) {
+  const next = await autoTranslateItem(item, fields);
+  for (const [key, nestedFields] of Object.entries(nested)) {
+    if (!Array.isArray(next[key])) continue;
+    next[key] = await Promise.all(next[key].map((child) => autoTranslateItem(child, nestedFields)));
+  }
+  return next;
+}
+
+async function translateAdminContentToEnglish(event) {
+  const button = event.currentTarget;
+  const message = document.querySelector("[data-translation-message]");
+  button.disabled = true;
+  message.textContent = "Traduction et enregistrement en cours";
+  try {
+    data.homeMedia = await Promise.all((data.homeMedia || []).map((item) => translateRecord(item, ["title", "subtitle"])));
+    data.homeProof = await Promise.all((data.homeProof || []).map((item) => translateRecord(item, ["title", "subtitle"])));
+    data.sectionMedia = Object.fromEntries(await Promise.all(Object.entries(data.sectionMedia || {}).map(async ([key, item]) => [key, await translateRecord(item, ["title", "subtitle"])])));
+    data.machines = await Promise.all((data.machines || []).map((item) => translateRecord(item, ["name", "category", "status", "description", "comment", "detailsText"], { specs: ["key", "value"] })));
+    data.realisations = await Promise.all((data.realisations || []).map((item) => translateRecord(item, ["title", "comment", "description"], { steps: ["title", "description"] })));
+    data.maintenanceServices = await Promise.all((data.maintenanceServices || []).map((item) => translateRecord(item, ["title", "text", "problem", "solution"], { history: ["problem", "solution"] })));
+    data.formations = await Promise.all((data.formations || []).map((item) => translateRecord(item, ["title", "duration", "description"])));
+    data.services = await Promise.all((data.services || []).map((item) => translateRecord(item, ["title", "text", "solution"])));
+    data.ads = await Promise.all((data.ads || []).map((item) => translateRecord(item, ["title", "text", "description", "location", "cta"])));
+    await saveData();
+    message.textContent = "Les traductions anglaises sont enregistrees";
+    message.classList.add("success");
+  } catch (err) {
+    message.textContent = err.message || "Traduction impossible";
+    message.classList.add("error");
+  } finally {
+    button.disabled = false;
+  }
 }
 
 export function adminSections() {
