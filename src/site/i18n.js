@@ -1,5 +1,6 @@
 const LANG_KEY = "ditona_site_language";
 const TRANSLATION_CACHE_KEY = "ditona_translation_cache_v1";
+const pendingTranslations = new Map();
 export const SUPPORTED_LANGUAGES = ["fr", "en", "pt", "zh"];
 const AUTO_TRANSLATION_LANGUAGES = SUPPORTED_LANGUAGES.filter((lang) => lang !== "fr");
 const dictionaries = {
@@ -761,7 +762,7 @@ export function tr(text) {
   const lang = currentLanguage();
   if (lang === "fr") return cleanDisplayText(text);
   const cleaned = cleanDisplayText(text);
-  return cleanDisplayText(textTranslations[lang]?.[cleaned] || translationCache()[cacheKey(lang, cleaned)] || cleaned);
+  return cleanDisplayText(textTranslations[lang]?.[text] || textTranslations[lang]?.[cleaned] || translationCache()[cacheKey(lang, cleaned)] || cleaned);
 }
 
 export function trField(item, field, fallback = "") {
@@ -793,7 +794,8 @@ export async function autoTranslateList(items = [], fields = []) {
 
 function cleanDisplayText(value) {
   if (typeof value !== "string") return value;
-  return value.replace(/\s+$/g, "");
+  // The site deliberately uses no sentence-ending dots in its interface.
+  return value.replace(/[.。…]+\s*$/g, "").replace(/\s+$/g, "");
 }
 
 export function translateDom(root = document) {
@@ -802,7 +804,8 @@ export function translateDom(root = document) {
   root.querySelectorAll("input[placeholder], textarea[placeholder]").forEach((field) => {
     const orig = field.dataset.origPlaceholder || field.placeholder;
     if (!field.dataset.origPlaceholder) field.dataset.origPlaceholder = orig;
-    const translated = lang === "fr" ? orig : (textTranslations[lang]?.[orig] || translationCache()[cacheKey(lang, orig)] || orig);
+    const cleaned = cleanDisplayText(orig);
+    const translated = lang === "fr" ? cleaned : (textTranslations[lang]?.[orig] || textTranslations[lang]?.[cleaned] || translationCache()[cacheKey(lang, cleaned)] || cleaned);
     field.placeholder = cleanDisplayText(translated);
     if (lang !== "fr" && translated === orig) translateTextOnline(orig, lang).then((next) => {
       if (next && currentLanguage() === lang && field.isConnected) field.placeholder = next;
@@ -812,7 +815,7 @@ export function translateDom(root = document) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
-      if (["SCRIPT", "STYLE"].includes(node.parentElement?.tagName)) return NodeFilter.FILTER_REJECT;
+      if (["SCRIPT", "STYLE", "TEXTAREA", "OPTION", "CODE", "PRE"].includes(node.parentElement?.tagName)) return NodeFilter.FILTER_REJECT;
       return NodeFilter.FILTER_ACCEPT;
     },
   });
@@ -833,7 +836,8 @@ export function translateDom(root = document) {
       const clean = cleanDisplayText(frSource);
       if (frSource && clean !== trimmed) node.nodeValue = current.replace(trimmed, clean);
     } else {
-      const translated = cleanDisplayText(textTranslations[lang]?.[frSource] || translationCache()[cacheKey(lang, frSource)] || frSource);
+      const source = cleanDisplayText(frSource);
+      const translated = cleanDisplayText(textTranslations[lang]?.[frSource] || textTranslations[lang]?.[source] || translationCache()[cacheKey(lang, source)] || source);
       if (translated !== trimmed) node.nodeValue = current.replace(trimmed, translated);
       if (translated === frSource) {
         translateTextOnline(frSource, lang).then((next) => {
@@ -871,7 +875,7 @@ function onlineLang(lang) {
 
 function canAutoTranslate(text) {
   const clean = cleanDisplayText(text);
-  if (!clean || clean.length < 2 || clean.length > 450) return false;
+  if (!clean || clean.length < 2) return false;
   if (/^(DITONA|FCFA|WhatsApp|\+?\d[\d\s.-]*|[\W_]+)$/i.test(clean)) return false;
   if (/^[\w.-]+@[\w.-]+$/.test(clean)) return false;
   return true;
@@ -880,8 +884,17 @@ function canAutoTranslate(text) {
 export async function translateTextOnline(text, lang) {
   const source = cleanDisplayText(text);
   if (lang === "fr" || !canAutoTranslate(source)) return source;
+  // The public translation endpoint limits one request to a short text. Split
+  // long messages from the admin inbox so they are translated too.
+  if (source.length > 450) {
+    const chunks = source.match(/.{1,400}(?:\s+|$)|.{1,400}/g) || [source];
+    return (await Promise.all(chunks.map((chunk) => translateTextOnline(chunk.trim(), lang)))).join(" ");
+  }
   const cached = translationCache()[cacheKey(lang, source)];
   if (cached) return cached;
+  const key = cacheKey(lang, source);
+  if (pendingTranslations.has(key)) return pendingTranslations.get(key);
+  const translation = (async () => {
   try {
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(source)}&langpair=fr|${onlineLang(lang)}`;
     const res = await fetch(url);
@@ -896,4 +909,11 @@ export async function translateTextOnline(text, lang) {
     console.warn("[i18n] traduction automatique indisponible:", err);
   }
   return source;
+  })();
+  pendingTranslations.set(key, translation);
+  try {
+    return await translation;
+  } finally {
+    pendingTranslations.delete(key);
+  }
 }

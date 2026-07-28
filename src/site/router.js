@@ -20,7 +20,7 @@ import {
 } from "./adminPages.js";
 import { messageThread, requestThread } from "./components.js";
 import { data, saveData, today, loadRemoteData, refreshSiteContent } from "./store.js";
-import { setLanguage } from "./i18n.js";
+import { setLanguage, translateDom } from "./i18n.js";
 import { escapeHtml } from "./format.js";
 import { addMessage } from "./store.js";
 import {
@@ -89,6 +89,9 @@ function bindGlobal() {
   bindChatbot();
   bindAdminActions();
   startGuestGate();
+  // Admin requests and messages are loaded from Supabase after the page shell
+  // is rendered. Translate the complete active view, not only public pages.
+  translateDom(document.querySelector("#app"));
 }
 
 function isProtectedPublicPath(path = location.pathname) {

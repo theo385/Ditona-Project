@@ -1,4 +1,4 @@
-import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, addMaintenanceRequest, addMachineComment, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession, uploadMediaFile } from "./store.js";
+import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, addMaintenanceRequest, addMachineComment, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession, recoveryAccessTokenFromUrl, uploadMediaFile } from "./store.js";
 import { machineCard, mediaTag, orderForm, publicShell, realisationCard, requestIdentityFields, serviceCard, setSlideTimer, visualTitle } from "./components.js";
 import { discountedPrice, escapeHtml, money } from "./format.js";
 import { t, tr, trField } from "./i18n.js";
@@ -600,8 +600,9 @@ export function forgotSuccessPage() {
 export async function resetPasswordPage() {
   const query = new URLSearchParams(location.search);
   const code = query.get("code");
+  let accessToken = recoveryAccessTokenFromUrl();
   
-  if (!code) {
+  if (!code && !accessToken) {
     publicShell(`
       <section class="section login-public">
         <div class="section-head"><div><p class="eyebrow">Erreur</p><h1>Lien invalide</h1></div></div>
@@ -614,8 +615,7 @@ export async function resetPasswordPage() {
     return;
   }
   
-  let accessToken;
-  try {
+  if (!accessToken) try {
     accessToken = await exchangeCodeForSession(code);
   } catch (err) {
     publicShell(`
