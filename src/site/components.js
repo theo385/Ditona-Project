@@ -48,12 +48,10 @@ function languagePicker() {
   const lang = currentLanguage();
   return `
     <label class="language-select" title="Langue">
-      ${lang === "zh" ? `<span class="flag-zh" aria-label="Chine"></span>` : `<span class="flag-${lang}"></span>`}
+      <span class="flag-${lang}"></span>
       <select data-lang>
         <option value="fr" ${lang === "fr" ? "selected" : ""}>Francais</option>
         <option value="en" ${lang === "en" ? "selected" : ""}>English</option>
-        <option value="pt" ${lang === "pt" ? "selected" : ""}>Portugues</option>
-        <option value="zh" ${lang === "zh" ? "selected" : ""}>中文</option>
       </select>
     </label>
   `;

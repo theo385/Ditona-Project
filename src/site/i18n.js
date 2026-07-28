@@ -1,7 +1,7 @@
 const LANG_KEY = "ditona_site_language";
 const TRANSLATION_CACHE_KEY = "ditona_translation_cache_v1";
 const pendingTranslations = new Map();
-export const SUPPORTED_LANGUAGES = ["fr", "en", "pt", "zh"];
+export const SUPPORTED_LANGUAGES = ["fr", "en"];
 const AUTO_TRANSLATION_LANGUAGES = SUPPORTED_LANGUAGES.filter((lang) => lang !== "fr");
 const dictionaries = {
   fr: {
@@ -91,6 +91,9 @@ const dictionaries = {
     "security.title": "Session expiree",
     "security.message": "Pour des raisons de securite, votre session a expire. Veuillez vous reconnecter pour continuer.",
     "security.login": "Se reconnecter",
+    "gate.title": "Connexion requise",
+    "gate.message": "Pour continuer vos recherches, veuillez vous connecter ou creer un compte",
+    "gate.signup": "S'inscrire",
   },
   en: {
     "nav.home": "Home",
@@ -179,6 +182,9 @@ const dictionaries = {
     "security.title": "Session expired",
     "security.message": "For security reasons, your session has expired. Please log in again to continue.",
     "security.login": "Log in again",
+    "gate.title": "Sign in required",
+    "gate.message": "To continue browsing, please sign in or create an account",
+    "gate.signup": "Create an account",
   },
   pt: {
     "nav.home": "Inicio",
@@ -745,7 +751,8 @@ const textTranslations = {
 };
 
 export function currentLanguage() {
-  return localStorage.getItem(LANG_KEY) || "fr";
+  const stored = localStorage.getItem(LANG_KEY);
+  return SUPPORTED_LANGUAGES.includes(stored) ? stored : "fr";
 }
 
 export function setLanguage(lang) {
@@ -807,7 +814,7 @@ export function translateDom(root = document) {
     const cleaned = cleanDisplayText(orig);
     const translated = lang === "fr" ? cleaned : (textTranslations[lang]?.[orig] || textTranslations[lang]?.[cleaned] || translationCache()[cacheKey(lang, cleaned)] || cleaned);
     field.placeholder = cleanDisplayText(translated);
-    if (lang !== "fr" && translated === orig) translateTextOnline(orig, lang).then((next) => {
+    if (lang !== "fr" && translated === cleaned) translateTextOnline(cleaned, lang).then((next) => {
       if (next && currentLanguage() === lang && field.isConnected) field.placeholder = next;
     });
   });
@@ -839,8 +846,8 @@ export function translateDom(root = document) {
       const source = cleanDisplayText(frSource);
       const translated = cleanDisplayText(textTranslations[lang]?.[frSource] || textTranslations[lang]?.[source] || translationCache()[cacheKey(lang, source)] || source);
       if (translated !== trimmed) node.nodeValue = current.replace(trimmed, translated);
-      if (translated === frSource) {
-        translateTextOnline(frSource, lang).then((next) => {
+      if (translated === source) {
+        translateTextOnline(source, lang).then((next) => {
           if (!next || currentLanguage() !== lang || !node.isConnected) return;
           node.nodeValue = node.nodeValue.replace(node.nodeValue.trim(), cleanDisplayText(next));
         });
@@ -868,10 +875,7 @@ function cacheKey(lang, source) {
   return `${lang}:${cleanDisplayText(source).toLowerCase()}`;
 }
 
-function onlineLang(lang) {
-  if (lang === "zh") return "zh-CN";
-  return lang;
-}
+function onlineLang(lang) { return lang; }
 
 function canAutoTranslate(text) {
   const clean = cleanDisplayText(text);

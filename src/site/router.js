@@ -20,7 +20,7 @@ import {
 } from "./adminPages.js";
 import { messageThread, requestThread } from "./components.js";
 import { data, saveData, today, loadRemoteData, refreshSiteContent } from "./store.js";
-import { setLanguage, translateDom } from "./i18n.js";
+import { setLanguage, t, translateDom } from "./i18n.js";
 import { escapeHtml } from "./format.js";
 import { addMessage } from "./store.js";
 import {
@@ -120,10 +120,10 @@ function startGuestGate() {
     document.body.insertAdjacentHTML("beforeend", `
       <section class="modal-backdrop session-gate">
         <article class="panel form-panel">
-          <h2>Connexion requise</h2>
-          <p>Pour continuer vos recherches, veuillez vous connecter ou creer un compte.</p>
-          <button class="primary" id="session-gate-login">Se connecter</button>
-          <button class="ghost" id="session-gate-signup">S'inscrire</button>
+          <h2>${t("gate.title")}</h2>
+          <p>${t("gate.message")}</p>
+          <button class="primary" id="session-gate-login">${t("action.login")}</button>
+          <button class="ghost" id="session-gate-signup">${t("gate.signup")}</button>
         </article>
       </section>
     `);
