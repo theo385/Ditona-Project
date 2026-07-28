@@ -169,7 +169,9 @@ async function translateRecord(item, fields, nested = {}) {
   const next = await autoTranslateItem(item, fields);
   for (const [key, nestedFields] of Object.entries(nested)) {
     if (!Array.isArray(next[key])) continue;
-    next[key] = await Promise.all(next[key].map((child) => autoTranslateItem(child, nestedFields)));
+    const translatedChildren = [];
+    for (const child of next[key]) translatedChildren.push(await autoTranslateItem(child, nestedFields));
+    next[key] = translatedChildren;
   }
   return next;
 }
@@ -180,15 +182,22 @@ async function translateAdminContentToEnglish(event) {
   button.disabled = true;
   message.textContent = "Traduction et enregistrement en cours";
   try {
-    data.homeMedia = await Promise.all((data.homeMedia || []).map((item) => translateRecord(item, ["title", "subtitle"])));
-    data.homeProof = await Promise.all((data.homeProof || []).map((item) => translateRecord(item, ["title", "subtitle"])));
-    data.sectionMedia = Object.fromEntries(await Promise.all(Object.entries(data.sectionMedia || {}).map(async ([key, item]) => [key, await translateRecord(item, ["title", "subtitle"])])));
-    data.machines = await Promise.all((data.machines || []).map((item) => translateRecord(item, ["name", "category", "status", "description", "comment", "detailsText"], { specs: ["key", "value"] })));
-    data.realisations = await Promise.all((data.realisations || []).map((item) => translateRecord(item, ["title", "comment", "description"], { steps: ["title", "description"] })));
-    data.maintenanceServices = await Promise.all((data.maintenanceServices || []).map((item) => translateRecord(item, ["title", "text", "problem", "solution"], { history: ["problem", "solution"] })));
-    data.formations = await Promise.all((data.formations || []).map((item) => translateRecord(item, ["title", "duration", "description"])));
-    data.services = await Promise.all((data.services || []).map((item) => translateRecord(item, ["title", "text", "solution"])));
-    data.ads = await Promise.all((data.ads || []).map((item) => translateRecord(item, ["title", "text", "description", "location", "cta"])));
+    const translateList = async (items, fields, nested) => {
+      const result = [];
+      for (const item of items || []) result.push(await translateRecord(item, fields, nested));
+      return result;
+    };
+    data.homeMedia = await translateList(data.homeMedia, ["title", "subtitle"]);
+    data.homeProof = await translateList(data.homeProof, ["title", "subtitle"]);
+    const sections = {};
+    for (const [key, item] of Object.entries(data.sectionMedia || {})) sections[key] = await translateRecord(item, ["title", "subtitle"]);
+    data.sectionMedia = sections;
+    data.machines = await translateList(data.machines, ["name", "category", "status", "description", "comment", "detailsText"], { specs: ["key", "value"] });
+    data.realisations = await translateList(data.realisations, ["title", "comment", "description"], { steps: ["title", "description"] });
+    data.maintenanceServices = await translateList(data.maintenanceServices, ["title", "text", "problem", "solution"], { history: ["problem", "solution"] });
+    data.formations = await translateList(data.formations, ["title", "duration", "description"]);
+    data.services = await translateList(data.services, ["title", "text", "solution"]);
+    data.ads = await translateList(data.ads, ["title", "text", "description", "location", "cta"]);
     await saveData();
     message.textContent = "Les traductions anglaises sont enregistrees";
     message.classList.add("success");

@@ -1,4 +1,4 @@
-import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, addMaintenanceRequest, addMachineComment, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession, recoveryAccessTokenFromUrl, uploadMediaFile } from "./store.js";
+import { data, today, addOrder, addMessage, addAppointment, addTrainingRequest, addMaintenanceRequest, addMachineComment, currentCustomer, loginCustomer, logoutCustomer, restoreCustomerFromUrl, signupCustomer, requestPasswordReset, resetPassword, exchangeCodeForSession, recoveryAccessTokenFromUrl, pendingConfirmationEmail, uploadMediaFile } from "./store.js";
 import { machineCard, mediaTag, orderForm, publicShell, realisationCard, requestIdentityFields, serviceCard, setSlideTimer, visualTitle } from "./components.js";
 import { discountedPrice, escapeHtml, money } from "./format.js";
 import { t, tr, trField } from "./i18n.js";
@@ -138,10 +138,10 @@ export function machineDetailPage(id) {
     <section class="machine-detail-page">
       <div class="machine-gallery-panel">
         <aside class="thumb-rail">
-          ${images.map((image, index) => `<button class="${index === 0 ? "active" : ""}" data-machine-thumb="${escapeHtml(image)}"><img src="${escapeHtml(image)}" alt="${escapeHtml(trField(machine, "name"))}"></button>`).join("")}
+          ${images.map((image, index) => `<button class="${index === 0 ? "active" : ""}" data-machine-thumb="${escapeHtml(image)}"><img src="${escapeHtml(image)}" alt="${escapeHtml(trField(machine, "name"))}" loading="lazy" decoding="async"></button>`).join("")}
         </aside>
         <figure class="machine-main-image">
-          <img src="${escapeHtml(images[0] || machine.image)}" alt="${escapeHtml(trField(machine, "name"))}" data-machine-main>
+          <img src="${escapeHtml(images[0] || machine.image)}" alt="${escapeHtml(trField(machine, "name"))}" data-machine-main fetchpriority="high" decoding="async">
         </figure>
       </div>
       <aside class="machine-buy-panel">
@@ -275,7 +275,7 @@ export function realisationDetailPage(id) {
   ];
   publicShell(`
     <section class="detail-hero">
-      <img src="${item.image}" alt="${trField(item, "title")}">
+      <img src="${item.image}" alt="${trField(item, "title")}" fetchpriority="high" decoding="async">
       <div><p class="eyebrow">${t("realisations.title")}</p><h1>${trField(item, "title")}</h1><p>${trField(item, item.comment ? "comment" : "description")}</p></div>
     </section>
     <section class="section detail-layout">
@@ -310,7 +310,7 @@ export function maintenanceDetailPage(id) {
   if (!item) return servicesPage();
   publicShell(`
     <section class="detail-hero">
-      <img src="${item.image}" alt="${trField(item, "title")}">
+      <img src="${item.image}" alt="${trField(item, "title")}" fetchpriority="high" decoding="async">
       <div><p class="eyebrow">${t("maintenance.title")}</p><h1>${trField(item, "title")}</h1><p>${trField(item, item.solution ? "solution" : "text")}</p></div>
     </section>
     <section class="section detail-layout">
@@ -318,10 +318,10 @@ export function maintenanceDetailPage(id) {
       <div class="panel maintenance-story">
         <h2>${t("maintenance.problem")}</h2>
         <p>${trField(item, "problem")}</p>
-        ${item.problemImage ? `<img src="${item.problemImage}" alt="Probleme" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;">` : ""}
+        ${item.problemImage ? `<img src="${item.problemImage}" alt="Probleme" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
         <h2>${t("maintenance.solution")}</h2>
         <p>${trField(item, item.solution ? "solution" : "text")}</p>
-        ${item.solutionImage ? `<img src="${item.solutionImage}" alt="Solution" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;">` : ""}
+        ${item.solutionImage ? `<img src="${item.solutionImage}" alt="Solution" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
       </div>
       <div class="timeline">${(item.history || []).map((row) => `
         <article class="panel step-card">
@@ -329,7 +329,7 @@ export function maintenanceDetailPage(id) {
           <div>
             <h2>${trField(row, "problem")}</h2>
             <p>${trField(row, "solution")}</p>
-            ${row.image ? `<img src="${row.image}" alt="Intervention" style="width:100%; max-width:500px; border-radius:8px; margin-top:16px;">` : ""}
+            ${row.image ? `<img src="${row.image}" alt="Intervention" style="width:100%; max-width:500px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
           </div>
         </article>
       `).join("")}</div>
@@ -677,6 +677,7 @@ export async function resetPasswordPage() {
 }
 
 export function signupSuccessPage() {
+  const email = pendingConfirmationEmail();
   publicShell(`
     <section class="section login-public">
       <div class="section-head"><div><p class="eyebrow">Inscription</p><h1>Compte cree avec succes</h1></div></div>
@@ -688,8 +689,8 @@ export function signupSuccessPage() {
         </div>
         <h2 style="color: #16a34a; margin-bottom: 1rem;">Compte cree avec succes</h2>
         <p style="color: var(--muted); margin-bottom: 2rem; line-height: 1.6;">
-          Votre compte a ete cree avec succes. Un e-mail de confirmation vous a ete envoye. 
-          Verifiez votre boite de reception et cliquez sur le lien pour activer votre compte.
+          Votre compte a ete cree, mais il n'est pas encore actif. Un e-mail de confirmation${email ? ` a ete envoye a <strong>${escapeHtml(email)}</strong>` : " vous a ete envoye"}.
+          Ouvrez ce lien, puis revenez vous connecter avec le meme e-mail et le meme mot de passe.
         </p>
         <button class="primary" data-link="/login" style="width: 100%;">Aller a la connexion</button>
       </div>

@@ -47,6 +47,8 @@ export const CUSTOMER_SESSION_KEY = "ditona_customer_session";
 export const GUEST_STARTED_KEY = "ditona_guest_started_at";
 const PASSWORD_RESET_SENT_AT_KEY = "ditona_password_reset_sent_at";
 const PASSWORD_RESET_COOLDOWN_MS = 60_000;
+const RECOVERY_ACCESS_TOKEN_KEY = "ditona_recovery_access_token";
+const PENDING_CONFIRMATION_EMAIL_KEY = "ditona_pending_confirmation_email";
 
 export function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -133,7 +135,7 @@ async function pkceChallenge(verifier) {
 }
 
 // ── Compression image avant upload ──────────────────────────
-async function compressImageFile(file, { maxWidth = 1600, maxHeight = 1600, quality = 0.8 } = {}) {
+async function compressImageFile(file, { maxWidth = 1600, maxHeight = 1600, quality = 0.78 } = {}) {
   if (!file || !file.type?.startsWith("image/")) return file;
   if (file.type === "image/svg+xml" || file.type === "image/gif") return file;
 
@@ -141,7 +143,10 @@ async function compressImageFile(file, { maxWidth = 1600, maxHeight = 1600, qual
     const bitmap = await createImageBitmap(file);
     let { width, height } = bitmap;
 
-    if (width <= maxWidth && height <= maxHeight) {
+    // Phone photos are often several megabytes even when their dimensions
+    // look reasonable. Re-encode files above 350 KB as well so the public
+    // machine, project and training pages stay quick on mobile networks.
+    if (width <= maxWidth && height <= maxHeight && file.size <= 350 * 1024) {
       bitmap.close?.();
       return file;
     }
@@ -487,7 +492,11 @@ async function authErrorMessage(res, fallback) {
     if (payload.error_code === "email_not_confirmed") {
       return "Compte cree mais e-mail non confirme. Ouvrez le lien recu par e-mail.";
     }
-    return payload.msg || payload.error_description || payload.message || fallback;
+    const message = payload.msg || payload.error_description || payload.message || "";
+    if (/invalid login credentials|invalid grant/i.test(message)) {
+      return "Connexion impossible. Verifiez l'e-mail et le mot de passe. Si le compte vient d'etre cree, confirmez d'abord l'e-mail recu.";
+    }
+    return message || fallback;
   } catch {
     return fallback;
   }
@@ -530,7 +539,11 @@ export async function signupCustomer(email, password, role = "acheteur", confirm
   });
   if (!res.ok) throw new Error(await authErrorMessage(res, "Inscription impossible. Essayez un autre e-mail."));
   const session = await res.json();
-  if (!session.access_token) return { pendingConfirmation: true, user: { id: cleanEmail, email: cleanEmail } };
+  if (!session.access_token) {
+    localStorage.setItem(PENDING_CONFIRMATION_EMAIL_KEY, cleanEmail);
+    return { pendingConfirmation: true, user: { id: cleanEmail, email: cleanEmail } };
+  }
+  localStorage.removeItem(PENDING_CONFIRMATION_EMAIL_KEY);
   await rememberCustomer(session.user || { id: cleanEmail, email: cleanEmail }, role, session.access_token);
   sessionStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(session));
   return session;
@@ -665,6 +678,7 @@ export async function resetPassword(newPassword, accessToken) {
     const error = await res.json();
     throw new Error(error.msg || error.error_description || "Modification impossible.");
   }
+  sessionStorage.removeItem(RECOVERY_ACCESS_TOKEN_KEY);
   return true;
 }
 
@@ -691,9 +705,18 @@ export function recoveryAccessTokenFromUrl() {
   const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
   const token = hash.get("access_token");
   const type = hash.get("type");
-  if (!token || (type && type !== "recovery")) return "";
-  history.replaceState({}, "", `${location.pathname}${location.search}`);
-  return token;
+  if (token && (!type || type === "recovery")) {
+    // The router may render again before the form is submitted. Keep the
+    // one-time token in session storage after removing it from the address.
+    sessionStorage.setItem(RECOVERY_ACCESS_TOKEN_KEY, token);
+    history.replaceState({}, "", `${location.pathname}${location.search}`);
+    return token;
+  }
+  return sessionStorage.getItem(RECOVERY_ACCESS_TOKEN_KEY) || "";
+}
+
+export function pendingConfirmationEmail() {
+  return localStorage.getItem(PENDING_CONFIRMATION_EMAIL_KEY) || "";
 }
 
 // ── API admin : mettre à jour (jeton admin requis par le RLS) ──
