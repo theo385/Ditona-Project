@@ -789,9 +789,9 @@ export async function autoTranslateItem(item, fields = []) {
       if (!source) continue;
       const translated = await translateTextOnline(source, lang);
       // Do not save the French source as an English translation when the
-      // translation service is temporarily unavailable.
+      // translation service is temporarily unavailable.  In particular, do
+      // not erase a translation already saved during a previous run.
       if (translated && translated !== source) next.translations[lang][field] = translated;
-      else delete next.translations[lang][field];
     }
   }
   return next;
@@ -903,20 +903,31 @@ export async function translateTextOnline(text, lang) {
   const key = cacheKey(lang, source);
   if (pendingTranslations.has(key)) return pendingTranslations.get(key);
   const translation = (async () => {
-  try {
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(source)}&langpair=fr|${onlineLang(lang)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("translation failed");
-    const payload = await res.json();
-    const translated = cleanDisplayText(payload?.responseData?.translatedText || "");
-    if (translated && translated.toLowerCase() !== source.toLowerCase()) {
-      saveTranslation(lang, source, translated);
-      return translated;
+    // MyMemory has a small daily free quota. It is used first, then the
+    // Google public translation endpoint is tried so an admin batch does not
+    // silently produce empty English fields once that quota is exhausted.
+    const providers = [
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(source)}&langpair=fr|${onlineLang(lang)}`,
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=${encodeURIComponent(onlineLang(lang))}&dt=t&q=${encodeURIComponent(source)}`,
+    ];
+    for (const url of providers) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const payload = await res.json();
+        const raw = Array.isArray(payload)
+          ? (payload[0] || []).map((part) => part?.[0] || "").join("")
+          : payload?.responseData?.translatedText || "";
+        const translated = cleanDisplayText(raw);
+        if (translated && translated.toLowerCase() !== source.toLowerCase()) {
+          saveTranslation(lang, source, translated);
+          return translated;
+        }
+      } catch (err) {
+        console.warn("[i18n] fournisseur de traduction indisponible:", err);
+      }
     }
-  } catch (err) {
-    console.warn("[i18n] traduction automatique indisponible:", err);
-  }
-  return source;
+    return source;
   })();
   pendingTranslations.set(key, translation);
   try {
