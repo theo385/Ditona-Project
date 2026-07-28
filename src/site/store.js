@@ -45,6 +45,8 @@ export const STORAGE_KEY = "ditona_site_data_v3";
 export const SESSION_KEY = "ditona_admin_session";
 export const CUSTOMER_SESSION_KEY = "ditona_customer_session";
 export const GUEST_STARTED_KEY = "ditona_guest_started_at";
+const PASSWORD_RESET_SENT_AT_KEY = "ditona_password_reset_sent_at";
+const PASSWORD_RESET_COOLDOWN_MS = 60_000;
 
 export function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -617,6 +619,11 @@ async function rememberCustomer(user, role, token = null) {
 export async function requestPasswordReset(email) {
   const cleanEmail = String(email || "").trim().toLowerCase();
   if (!cleanEmail) throw new Error("E-mail requis.");
+  const lastSentAt = Number(localStorage.getItem(PASSWORD_RESET_SENT_AT_KEY) || 0);
+  const remainingMs = PASSWORD_RESET_COOLDOWN_MS - (Date.now() - lastSentAt);
+  if (remainingMs > 0) {
+    throw new Error(`Un lien vient deja d'etre demande. Reessayez dans ${Math.ceil(remainingMs / 1000)} secondes.`);
+  }
 
   const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
     method: "POST",
@@ -630,9 +637,13 @@ export async function requestPasswordReset(email) {
   });
 
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.msg || error.error_description || "Envoi impossible. Verifiez l'e-mail.");
+    const message = await authErrorMessage(res, "Envoi impossible. Verifiez l'e-mail.");
+    if (/rate.?limit|too many emails|over_email_send_rate_limit/i.test(message)) {
+      throw new Error("La limite d'e-mails de reinitialisation est atteinte. Attendez jusqu'a une heure avant de reessayer.");
+    }
+    throw new Error(message);
   }
+  localStorage.setItem(PASSWORD_RESET_SENT_AT_KEY, String(Date.now()));
   return true;
 }
 
