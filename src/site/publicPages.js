@@ -544,12 +544,12 @@ export function signupPage() {
 export function forgotPasswordPage() {
   publicShell(`
     <section class="section login-public">
-      <div class="section-head"><div><p class="eyebrow">Mot de passe oublie</p><h1>Recuperer l'acces</h1></div></div>
+      <div class="section-head"><div><p class="eyebrow">${t("forgot.title")}</p><h1>${t("forgot.heading")}</h1></div></div>
       <form id="forgot-password-form" class="panel form-panel" style="max-width: 500px; margin: 0 auto;">
-        <p style="color: var(--muted); margin-bottom: 1.5rem;">Entrez votre adresse e-mail et nous vous enverrons un lien pour creer un nouveau mot de passe.</p>
-        <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
-        <button class="primary" type="submit">Envoyer le lien</button>
-        <button class="ghost" type="button" data-link="/login">Retour a la connexion</button>
+        <p style="color: var(--muted); margin-bottom: 1.5rem;">${t("forgot.description")}</p>
+        <label>${t("login.email")}<input name="email" type="email" required placeholder="client@email.com"></label>
+        <button class="primary" type="submit">${t("forgot.submit")}</button>
+        <button class="ghost" type="button" data-link="/login">${t("signup.back")}</button>
         <p class="form-message" data-forgot-message></p>
       </form>
     </section>
@@ -579,19 +579,18 @@ export function forgotPasswordPage() {
 export function forgotSuccessPage() {
   publicShell(`
     <section class="section login-public">
-      <div class="section-head"><div><p class="eyebrow">Mot de passe oublie</p><h1>Lien envoye</h1></div></div>
+      <div class="section-head"><div><p class="eyebrow">${t("forgot.title")}</p><h1>${t("forgot.sentTitle")}</h1></div></div>
       <div class="panel form-panel" style="max-width: 500px; margin: 0 auto; text-align: center;">
         <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
           <div style="width: 80px; height: 80px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center;">
             <span style="font-size: 2.5rem; color: #16a34a; font-weight: 900;">✓</span>
           </div>
         </div>
-        <h2 style="color: #16a34a; margin-bottom: 1rem;">Lien envoye avec succes</h2>
+        <h2 style="color: #16a34a; margin-bottom: 1rem;">${t("forgot.sentHeading")}</h2>
         <p style="color: var(--muted); margin-bottom: 2rem; line-height: 1.6;">
-          Un lien de reinitialisation de mot de passe a ete envoye a votre adresse e-mail. 
-          Verifiez votre boite de reception (et vos spams) et cliquez sur le lien pour creer un nouveau mot de passe.
+          ${t("forgot.sentDescription")}
         </p>
-        <button class="primary" data-link="/login" style="width: 100%;">Retour a la connexion</button>
+        <button class="primary" data-link="/login" style="width: 100%;">${t("signup.back")}</button>
       </div>
     </section>
   `, "/forgot-success");
@@ -632,12 +631,12 @@ export async function resetPasswordPage() {
   
   publicShell(`
     <section class="section login-public">
-      <div class="section-head"><div><p class="eyebrow">Nouveau mot de passe</p><h1>Creer un nouveau mot de passe</h1></div></div>
+      <div class="section-head"><div><p class="eyebrow">${t("reset.title")}</p><h1>${t("reset.heading")}</h1></div></div>
       <form id="reset-password-form" class="panel form-panel" style="max-width: 500px; margin: 0 auto;">
-        <p style="color: var(--muted); margin-bottom: 1.5rem;">Choisissez un nouveau mot de passe pour votre compte.</p>
-        <label>Nouveau mot de passe<input name="password" type="password" required minlength="6" placeholder="Minimum 6 caracteres"></label>
-        <label>Confirmer le mot de passe<input name="confirm" type="password" required minlength="6"></label>
-        <button class="primary" type="submit">Mettre a jour le mot de passe</button>
+        <p style="color: var(--muted); margin-bottom: 1.5rem;">${t("reset.description")}</p>
+        <label>${t("reset.newPassword")}<input name="password" type="password" required minlength="6" placeholder="${t("reset.minimum")}"></label>
+        <label>${t("signup.confirm")}<input name="confirm" type="password" required minlength="6"></label>
+        <button class="primary" type="submit">${t("reset.submit")}</button>
         <p class="form-message" data-reset-message></p>
       </form>
     </section>
@@ -680,19 +679,18 @@ export function signupSuccessPage() {
   const email = pendingConfirmationEmail();
   publicShell(`
     <section class="section login-public">
-      <div class="section-head"><div><p class="eyebrow">Inscription</p><h1>Compte cree avec succes</h1></div></div>
+      <div class="section-head"><div><p class="eyebrow">${t("signup.title")}</p><h1>${t("signupSuccess.heading")}</h1></div></div>
       <div class="panel form-panel" style="max-width: 500px; margin: 0 auto; text-align: center;">
         <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
           <div style="width: 80px; height: 80px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center;">
             <span style="font-size: 2.5rem; color: #16a34a; font-weight: 900;">✓</span>
           </div>
         </div>
-        <h2 style="color: #16a34a; margin-bottom: 1rem;">Compte cree avec succes</h2>
+        <h2 style="color: #16a34a; margin-bottom: 1rem;">${t("signupSuccess.heading")}</h2>
         <p style="color: var(--muted); margin-bottom: 2rem; line-height: 1.6;">
-          Votre compte a ete cree, mais il n'est pas encore actif. Un e-mail de confirmation${email ? ` a ete envoye a <strong>${escapeHtml(email)}</strong>` : " vous a ete envoye"}.
-          Ouvrez ce lien, puis revenez vous connecter avec le meme e-mail et le meme mot de passe.
+          ${t("signupSuccess.description")}${email ? ` <strong>${escapeHtml(email)}</strong>` : ""}
         </p>
-        <button class="primary" data-link="/login" style="width: 100%;">Aller a la connexion</button>
+        <button class="primary" data-link="/login" style="width: 100%;">${t("signupSuccess.login")}</button>
       </div>
     </section>
   `, "/signup-success");
