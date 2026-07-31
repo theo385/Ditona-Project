@@ -1,4 +1,4 @@
-import { adminItem, clearTimers, dashboardActivity, logo, messageConversation, requestConversation, requestConversationSimple } from "./components.js";
+import { adminItem, clearTimers, dashboardActivity, languagePicker, logo, messageConversation, requestConversation, requestConversationSimple } from "./components.js";
 import { countNew, escapeHtml } from "./format.js";
 import {
   data, isAdminLoggedIn, loginAdmin, logoutAdmin, saveData, today,
@@ -103,6 +103,7 @@ export function adminShell(content, active = "dashboard") {
       <aside class="admin-side">
         <button class="admin-collapse" data-admin-collapse type="button" title="Reduire / ouvrir la navigation"><span>×</span></button>
         ${logo("admin-logo")}
+        ${languagePicker("admin-language")}
         ${adminNav("Dashboard", ADMIN_BASE, active, "dashboard")}
         ${adminNav("Accueil anime", `${ADMIN_BASE}/home`, active, "home")}
         ${adminNav("Medias sections", `${ADMIN_BASE}/sections`, active, "sections")}

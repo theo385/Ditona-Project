@@ -44,10 +44,10 @@ export function visualTitle(key, eyebrow) {
   `;
 }
 
-function languagePicker() {
+export function languagePicker(extraClass = "") {
   const lang = currentLanguage();
   return `
-    <label class="language-select" title="Langue">
+    <label class="language-select ${extraClass}" title="Langue">
       <span class="flag-${lang}"></span>
       <select data-lang>
         <option value="fr" ${lang === "fr" ? "selected" : ""}>Francais</option>

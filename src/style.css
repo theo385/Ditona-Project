@@ -1149,6 +1149,13 @@ body.admin-mode {
 
 .admin-side .brand { color: white; margin-bottom: 26px; }
 
+.admin-language {
+  width: 100%;
+  margin: 0 0 16px;
+}
+
+.admin-language select { flex: 1; }
+
 .admin-collapse {
   display: flex !important;
   align-items: center;
@@ -1206,7 +1213,8 @@ body.admin-mode {
 
 .admin-collapsed .admin-side .brand-text,
 .admin-collapsed .admin-side button:not(.admin-collapse) span,
-.admin-collapsed .admin-side button:not(.admin-collapse) .nav-badge {
+.admin-collapsed .admin-side button:not(.admin-collapse) .nav-badge,
+.admin-collapsed .admin-language {
   display: none;
 }
 

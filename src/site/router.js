@@ -89,9 +89,8 @@ function bindGlobal() {
   bindChatbot();
   bindAdminActions();
   startGuestGate();
-  // The administration remains in French; only the public site follows the
-  // language selected by visitors.
-  if (!location.pathname.startsWith(ADMIN_BASE)) translateDom(document.querySelector("#app"));
+  // The public site and the administration both follow the selected language.
+  translateDom(document.querySelector("#app"));
 }
 
 function isProtectedPublicPath(path = location.pathname) {
