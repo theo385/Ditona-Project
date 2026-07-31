@@ -498,23 +498,23 @@ export async function loginPage() {
   const session = currentCustomer();
   publicShell(`
     <section class="section login-public">
-      <div class="section-head"><div><p class="eyebrow">Compte client</p><h1>Connexion utilisateur</h1></div></div>
+      <div class="section-head"><div><p class="eyebrow">${t("login.account")}</p><h1>${t("login.user")}</h1></div></div>
       ${session?.user ? `
         <div class="panel form-panel customer-session">
-          <h2>Connecte</h2>
-          <p>${session.user.email || "Votre compte client est actif."}</p>
-          <button class="primary" data-link="/machines">Voir les machines</button>
-          <button class="ghost" type="button" data-customer-logout>Se deconnecter</button>
+          <h2>${t("login.connected")}</h2>
+          <p>${session.user.email || t("login.activeAccount")}</p>
+          <button class="primary" data-link="/machines">${t("login.viewMachines")}</button>
+          <button class="ghost" type="button" data-customer-logout>${t("login.logout")}</button>
         </div>
       ` : `
         <form id="customer-login-form" class="panel form-panel">
-          <h2>Se connecter</h2>
-          <label>E-mail<input name="email" type="email" required placeholder="client@email.com"></label>
-          <label>Mot de passe<input name="password" type="password" required></label>
-          <label class="check-line"><input type="checkbox" checked> Rester connecte</label>
-          <button class="primary" type="submit">Se connecter</button>
-          <button class="ghost" type="button" data-link="/forgot-password">Mot de passe oublie ?</button>
-          <p class="auth-switch">Pas encore de compte ? <button class="link-button" type="button" data-link="/signup">S'inscrire</button></p>
+          <h2>${t("login.submit")}</h2>
+          <label>${t("login.email")}<input name="email" type="email" required placeholder="client@email.com"></label>
+          <label>${t("login.password")}<input name="password" type="password" required></label>
+          <label class="check-line"><input type="checkbox" checked> ${t("login.staySignedIn")}</label>
+          <button class="primary" type="submit">${t("login.submit")}</button>
+          <button class="ghost" type="button" data-link="/forgot-password">${t("login.forgotPassword")}</button>
+          <p class="auth-switch">${t("login.noAccount")} <button class="link-button" type="button" data-link="/signup">${t("login.signup")}</button></p>
           <p class="form-message" data-login-message></p>
         </form>
       `}

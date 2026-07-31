@@ -277,7 +277,7 @@ export function machineCard(machine) {
           </div>
           <button class="primary small" data-order="${machine.id}">${t("action.order")}</button>
         </div>
-        <button class="ghost small machine-detail-link" data-link="/machines/${escapeHtml(machine.id)}">Voir les details</button>
+        <button class="ghost small machine-detail-link" data-link="/machines/${escapeHtml(machine.id)}">${t("machine.viewDetails")}</button>
       </div>
     </article>
   `;

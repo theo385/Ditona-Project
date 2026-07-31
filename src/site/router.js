@@ -89,9 +89,9 @@ function bindGlobal() {
   bindChatbot();
   bindAdminActions();
   startGuestGate();
-  // Admin requests and messages are loaded from Supabase after the page shell
-  // is rendered. Translate the complete active view, not only public pages.
-  translateDom(document.querySelector("#app"));
+  // The administration remains in French; only the public site follows the
+  // language selected by visitors.
+  if (!location.pathname.startsWith(ADMIN_BASE)) translateDom(document.querySelector("#app"));
 }
 
 function isProtectedPublicPath(path = location.pathname) {
