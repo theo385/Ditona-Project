@@ -290,6 +290,12 @@ function setAdminMode(enabled) {
 }
 
 export function render() {
+   const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+  if (hash.get("type") === "recovery" && hash.get("access_token") && location.pathname !== "/reset-password") {
+    history.replaceState({}, "", "/reset-password" + location.hash);
+    location.pathname = "/reset-password"; 
+    return;
+  }
   const path = location.pathname;
   if (path === "/machines") { machinesPage(); bindGlobal(); return; }
   if (path.startsWith("/machines/")) { machineDetailPage(path.split("/").pop()); bindGlobal(); return; }

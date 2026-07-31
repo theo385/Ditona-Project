@@ -252,7 +252,7 @@ export function adminHome() {
       <button class="ghost" type="reset">Nouveau media</button>
     </form>
     <div class="admin-list">${data.homeMedia.map((s) => adminItem({ ...s, name: s.title, comment: s.subtitle }, "home")).join("")}</div>
-    <div class="admin-head secondary-head"><p class="eyebrow">Bas de l'accueil</p><h1>Images fixes affichees en bas</h1><p>Modifiez les trois visuels qui apparaissent avant le pied de page.</p></div>
+    <div class="admin-head secondary-head"><p class="eyebrow">Accueil</p><h1>Images fixes de l'aceuil</h1><p>Modifiez les trois visuels qui apparaissent avant le pied de page.</p></div>
     <form id="home-proof-form" class="panel admin-form">
       <input name="id" type="hidden">
       <label>Titre<input name="title" required></label>
