@@ -89,7 +89,8 @@ function bindGlobal() {
   bindChatbot();
   bindAdminActions();
   startGuestGate();
-  // The public site and the administration both follow the selected language.
+  // Admin requests and messages are loaded from Supabase after the page shell
+  // is rendered. Translate the complete active view, not only public pages.
   translateDom(document.querySelector("#app"));
 }
 
@@ -289,13 +290,48 @@ function setAdminMode(enabled) {
   document.body.classList.toggle("admin-mode", enabled);
 }
 
-export function render() {
-   const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
-  if (hash.get("type") === "recovery" && hash.get("access_token") && location.pathname !== "/reset-password") {
+// ── Détection du token de récupération de mot de passe ──────
+// Supabase place parfois le lien de recovery sur l'URL "Site URL"
+// par défaut (racine "/") au lieu du "redirect_to" demandé, selon
+// la configuration du projet ou un souci de propagation de config.
+// Pour ne plus dépendre uniquement de ce réglage externe, on
+// détecte nous-mêmes le hash "#access_token=...&type=recovery"
+// peu importe la page sur laquelle il atterrit, et on redirige
+// immédiatement vers /reset-password en conservant le hash intact
+// (resetPasswordPage() lira le token via recoveryAccessTokenFromUrl()).
+function redirectRecoveryTokenIfNeeded() {
+  if (!location.hash) return false;
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const type = hash.get("type");
+  const hasToken = hash.get("access_token");
+  if (!hasToken) return false;
+
+  // Lien de reinitialisation de mot de passe : direction /reset-password.
+  if (type === "recovery" && location.pathname !== "/reset-password") {
     history.replaceState({}, "", "/reset-password" + location.hash);
-    location.pathname = "/reset-password"; 
-    return;
+    return true;
   }
+
+  // Lien de confirmation d'inscription : direction /login. On pose un
+  // marqueur temporaire pour que loginPage() affiche un message clair
+  // ("Compte confirme avec succes") au lieu de connecter l'utilisateur
+  // silencieusement, ce qui donnait l'impression que rien ne se passait.
+  if (type === "signup" && location.pathname !== "/login") {
+    sessionStorage.setItem("ditona_signup_confirmed", "1");
+    history.replaceState({}, "", "/login" + location.hash);
+    return true;
+  }
+
+  return false;
+}
+
+export function render() {
+  // Si un token de recuperation vient d'atterrir sur la mauvaise page,
+  // on corrige l'URL puis on relance le rendu proprement une seule fois.
+  if (redirectRecoveryTokenIfNeeded()) {
+    return render();
+  }
+
   const path = location.pathname;
   if (path === "/machines") { machinesPage(); bindGlobal(); return; }
   if (path.startsWith("/machines/")) { machineDetailPage(path.split("/").pop()); bindGlobal(); return; }
