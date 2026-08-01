@@ -496,33 +496,9 @@ export function aboutPage() {
 export async function loginPage() {
   await restoreCustomerFromUrl();
   const session = currentCustomer();
-
-  // Marqueur pose par router.js (redirectRecoveryTokenIfNeeded) quand un
-  // lien de confirmation d'inscription (type=signup) vient d'etre clique,
-  // peu importe la page ou il avait atterri au depart. On l'affiche une
-  // seule fois puis on le retire, pour ne pas reafficher le message a
-  // chaque rafraichissement ou navigation ulterieure sur /login.
-  const justConfirmed = sessionStorage.getItem("ditona_signup_confirmed");
-  if (justConfirmed) sessionStorage.removeItem("ditona_signup_confirmed");
-
   publicShell(`
     <section class="section login-public">
       <div class="section-head"><div><p class="eyebrow">${t("login.account")}</p><h1>${t("login.user")}</h1></div></div>
-      ${justConfirmed ? `
-        <div class="panel form-panel" style="max-width: 500px; margin: 0 auto 24px; text-align: center;">
-          <div style="display: flex; justify-content: center; margin-bottom: 1rem;">
-            <div style="width: 64px; height: 64px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center;">
-              <span style="font-size: 2rem; color: #16a34a; font-weight: 900;">✓</span>
-            </div>
-          </div>
-          <h2 style="color: #16a34a; margin-bottom: 0.5rem;">Compte confirme avec succes</h2>
-          <p style="color: var(--muted);">
-            ${session?.user
-              ? "Votre adresse e-mail est verifiee et vous etes maintenant connecte."
-              : "Votre adresse e-mail est verifiee. Connectez-vous avec votre e-mail et votre mot de passe pour continuer."}
-          </p>
-        </div>
-      ` : ""}
       ${session?.user ? `
         <div class="panel form-panel customer-session">
           <h2>${t("login.connected")}</h2>
