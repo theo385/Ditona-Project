@@ -496,6 +496,14 @@ async function authErrorMessage(res, fallback) {
     if (/invalid login credentials|invalid grant/i.test(message)) {
       return "Connexion impossible. Verifiez l'e-mail et le mot de passe. Si le compte vient d'etre cree, confirmez d'abord l'e-mail recu.";
     }
+    // Inscription avec un email deja utilise : Supabase renvoie soit un
+    // error_code explicite ("user_already_exists"), soit un message
+    // contenant "already registered" / "already exists". On detecte les
+    // deux pour proposer clairement de se connecter plutot que de laisser
+    // un message technique peu comprehensible pour le visiteur.
+    if (payload.error_code === "user_already_exists" || /already registered|already exists/i.test(message)) {
+      return "Ce compte existe deja. Connectez-vous plutot depuis la page de connexion.";
+    }
     return message || fallback;
   } catch {
     return fallback;
@@ -539,6 +547,13 @@ export async function signupCustomer(email, password, role = "acheteur", confirm
   });
   if (!res.ok) throw new Error(await authErrorMessage(res, "Inscription impossible. Essayez un autre e-mail."));
   const session = await res.json();
+  // Cas particulier : Supabase repond parfois 200 avec un utilisateur "fantome"
+  // (identities vide) quand l'email existe deja mais n'est pas confirme, sans
+  // renvoyer d'erreur HTTP. On le detecte pour eviter de faire croire a une
+  // inscription reussie alors qu'aucun nouvel email n'a ete envoye.
+  if (Array.isArray(session.identities) && session.identities.length === 0) {
+    throw new Error("Ce compte existe deja. Connectez-vous plutot depuis la page de connexion.");
+  }
   if (!session.access_token) {
     localStorage.setItem(PENDING_CONFIRMATION_EMAIL_KEY, cleanEmail);
     return { pendingConfirmation: true, user: { id: cleanEmail, email: cleanEmail } };
