@@ -175,7 +175,10 @@ function bindChatbot() {
     const text = new FormData(event.target).get("text").trim();
     const autoReply = chatbotAnswer(text);
     addMessage({ id: "MSG-" + Date.now().toString().slice(-6), name: "Visiteur chatbot", email: "", phone: "", subject: "Chatbot", message: text, autoReply, reply: "", status: "Nouveau", seenAt: "", createdAt: today() });
-    document.querySelector("[data-chat-log]").insertAdjacentHTML("beforeend", `<p class="user">${text}</p><p class="bot">${autoReply}</p>`);
+    document.querySelector("[data-chat-log]").insertAdjacentHTML(
+      "beforeend",
+      `<p class="user">${escapeHtml(text)}</p><p class="bot">${escapeHtml(autoReply)}</p>`
+    );
     event.target.reset();
   });
 }

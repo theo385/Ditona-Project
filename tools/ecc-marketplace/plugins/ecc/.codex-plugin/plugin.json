@@ -1,0 +1,25 @@
+{
+  "name": "ecc",
+  "version": "0.1.0",
+  "description": "Run authorized, non-destructive security audits and remediation verification for web applications.",
+  "author": {
+    "name": "DITONA Engineering"
+  },
+  "license": "Proprietary",
+  "keywords": [
+    "security",
+    "web security",
+    "audit",
+    "hardening",
+    "vulnerability remediation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ECC Security Audit",
+    "shortDescription": "Audit and harden owned web apps",
+    "longDescription": "Performs scoped, non-destructive vulnerability reviews, helps remediate confirmed issues, and reruns the same checks for verification.",
+    "developerName": "DITONA Engineering",
+    "category": "Developer tools",
+    "capabilities": ["Read", "Write"]
+  }
+}

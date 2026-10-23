@@ -1,0 +1,19 @@
+{
+  "name": "ecc",
+  "interface": {
+    "displayName": "DITONA Tools"
+  },
+  "plugins": [
+    {
+      "name": "ecc",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ecc"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Developer tools"
+    }
+  ]
+}
