@@ -25,6 +25,12 @@ button, input, select, textarea { font: inherit; }
 button { border: 0; cursor: pointer; }
 img { display: block; max-width: 100%; }
 
+/* Keep page rendering responsive while below-the-fold photos decode. */
+.item-card, .service-card, .home-proof article, .home-focus article {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 360px;
+}
+
 .site-header {
   position: sticky;
   top: 0;

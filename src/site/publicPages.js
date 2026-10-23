@@ -9,7 +9,7 @@ export function homePage() {
     <section class="home-cinema" data-hero>
       ${media.map((item, index) => `
         <article class="cinema-slide ${index === 0 ? "active" : ""}" data-slide="${index}">
-          ${mediaTag(item)}
+          ${mediaTag(item, "DITONA", { eager: index === 0 })}
           <div class="cinema-caption">
             <p class="eyebrow">${t("home.eyebrow")}</p>
             <h1>${trField(item, "title")}</h1>

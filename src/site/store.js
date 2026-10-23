@@ -135,7 +135,7 @@ async function pkceChallenge(verifier) {
 }
 
 // ── Compression image avant upload ──────────────────────────
-async function compressImageFile(file, { maxWidth = 1600, maxHeight = 1600, quality = 0.78 } = {}) {
+async function compressImageFile(file, { maxWidth = 1280, maxHeight = 1280, quality = 0.72 } = {}) {
   if (!file || !file.type?.startsWith("image/")) return file;
   if (file.type === "image/svg+xml" || file.type === "image/gif") return file;
 
@@ -143,10 +143,10 @@ async function compressImageFile(file, { maxWidth = 1600, maxHeight = 1600, qual
     const bitmap = await createImageBitmap(file);
     let { width, height } = bitmap;
 
-    // Phone photos are often several megabytes even when their dimensions
-    // look reasonable. Re-encode files above 350 KB as well so the public
-    // machine, project and training pages stay quick on mobile networks.
-    if (width <= maxWidth && height <= maxHeight && file.size <= 350 * 1024) {
+    // Each photo displayed on the public site should stay small enough for a
+    // mobile connection. Images over 250 KB are re-encoded even when their
+    // dimensions are already reasonable.
+    if (width <= maxWidth && height <= maxHeight && file.size <= 250 * 1024) {
       bitmap.close?.();
       return file;
     }
@@ -162,13 +162,15 @@ async function compressImageFile(file, { maxWidth = 1600, maxHeight = 1600, qual
     ctx.drawImage(bitmap, 0, 0, width, height);
     bitmap.close?.();
 
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", quality)
-    );
+    // WebP is substantially lighter than JPEG for photos uploaded from
+    // phones. JPEG remains a fallback if WebP cannot be encoded locally.
+    let blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+    if (!blob || !blob.size) blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
     if (!blob) return file;
 
-    const newName = (file.name || "photo").replace(/\.[a-zA-Z0-9]+$/, "") + ".jpg";
-    return new File([blob], newName, { type: "image/jpeg" });
+    const extension = blob.type === "image/webp" ? "webp" : "jpg";
+    const newName = (file.name || "photo").replace(/\.[a-zA-Z0-9]+$/, "") + `.${extension}`;
+    return new File([blob], newName, { type: blob.type || "image/jpeg" });
   } catch (err) {
     console.warn("[compressImageFile] echec de compression, envoi du fichier original:", err);
     return file;
@@ -193,6 +195,8 @@ export async function uploadMediaFile(file, folder = "admin") {
           "apikey": SUPABASE_ANON_KEY,
           "Authorization": `Bearer ${token || SUPABASE_ANON_KEY}`,
           "Content-Type": file.type || "application/octet-stream",
+          // Every upload uses a unique path, so an immutable cache is safe.
+          "cache-control": "public, max-age=31536000, immutable",
           "x-upsert": "true",
         },
         body: file,

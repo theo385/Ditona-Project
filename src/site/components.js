@@ -29,16 +29,18 @@ export function navButton(label, path, active) {
   return `<button class="${active === path ? "active" : ""}" data-link="${path}">${label}</button>`;
 }
 
-export function mediaTag(item, alt = "DITONA") {
+export function mediaTag(item, alt = "DITONA", { eager = false } = {}) {
   if (item?.type === "video") return `<video src="${escapeHtml(item.image)}" autoplay muted loop playsinline></video>`;
-  return `<img src="${escapeHtml(item?.image || "")}" alt="${escapeHtml(item?.title || alt)}">`;
+  const loading = eager ? "eager" : "lazy";
+  const priority = eager ? ' fetchpriority="high"' : "";
+  return `<img src="${escapeHtml(item?.image || "")}" alt="${escapeHtml(item?.title || alt)}" loading="${loading}" decoding="async"${priority}>`;
 }
 
 export function visualTitle(key, eyebrow) {
   const item = data.sectionMedia[key];
   return `
     <section class="visual-title">
-      ${mediaTag(item, trField(item, "title"))}
+      ${mediaTag(item, trField(item, "title"), { eager: true })}
       <div><p class="eyebrow">${tr(eyebrow)}</p><h1>${escapeHtml(trField(item, "title"))}</h1><p>${escapeHtml(trField(item, "subtitle"))}</p></div>
     </section>
   `;
