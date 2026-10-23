@@ -128,6 +128,29 @@ DROP POLICY IF EXISTS allow_public_media_read ON storage.objects;
 DROP POLICY IF EXISTS allow_public_media_insert ON storage.objects;
 DROP POLICY IF EXISTS allow_public_media_update ON storage.objects;
 DROP POLICY IF EXISTS allow_public_media_delete ON storage.objects;
+DROP POLICY IF EXISTS public_insert_orders ON orders;
+DROP POLICY IF EXISTS admin_manage_orders ON orders;
+DROP POLICY IF EXISTS public_insert_messages ON messages;
+DROP POLICY IF EXISTS admin_manage_messages ON messages;
+DROP POLICY IF EXISTS public_insert_appointments ON appointments;
+DROP POLICY IF EXISTS admin_manage_appointments ON appointments;
+DROP POLICY IF EXISTS public_insert_training_requests ON training_requests;
+DROP POLICY IF EXISTS admin_manage_training_requests ON training_requests;
+DROP POLICY IF EXISTS public_insert_maintenance_requests ON maintenance_requests;
+DROP POLICY IF EXISTS admin_manage_maintenance_requests ON maintenance_requests;
+DROP POLICY IF EXISTS public_read_comments ON machine_comments;
+DROP POLICY IF EXISTS public_insert_comments ON machine_comments;
+DROP POLICY IF EXISTS admin_manage_comments ON machine_comments;
+DROP POLICY IF EXISTS public_read_site_content ON site_content;
+DROP POLICY IF EXISTS admin_manage_site_content ON site_content;
+DROP POLICY IF EXISTS customer_read_own_account ON customer_accounts;
+DROP POLICY IF EXISTS customer_insert_own_account ON customer_accounts;
+DROP POLICY IF EXISTS customer_update_own_account ON customer_accounts;
+DROP POLICY IF EXISTS admin_manage_customer_accounts ON customer_accounts;
+DROP POLICY IF EXISTS media_public_read ON storage.objects;
+DROP POLICY IF EXISTS media_admin_insert ON storage.objects;
+DROP POLICY IF EXISTS media_admin_update ON storage.objects;
+DROP POLICY IF EXISTS media_admin_delete ON storage.objects;
 
 -- One row is created manually for each administrator, with their auth.users id.
 CREATE TABLE IF NOT EXISTS admin_profiles (
