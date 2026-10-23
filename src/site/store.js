@@ -86,18 +86,13 @@ async function sbSelectContent() {
 }
 
 async function sbInsert(table, row) {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(row),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return await res.json();
-  } catch (err) {
-    console.error(`[Supabase] INSERT ${table}:`, err);
-    return null;
-  }
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(row),
+  });
+  if (!res.ok) throw new Error(`Envoi ${table} impossible: ${await res.text()}`);
+  return await res.json();
 }
 
 async function sbUpsert(table, row, conflictKey = "id", token = null) {
@@ -451,42 +446,40 @@ export async function saveData() {
 // ── API publique : ajouter (formulaires ouverts à tous) ───────
 export async function addOrder(order) {
   const row = { ...order };
-  data.orders.unshift(row);
   await sbInsert("orders", requestToSupabase(row));
+  data.orders.unshift(row);
 }
 
 export async function addMessage(message) {
   const row = { ...message };
-  data.messages.unshift(row);
   await sbInsert("messages", requestToSupabase(row));
+  data.messages.unshift(row);
 }
 
 export async function addAppointment(appointment) {
   const row = { ...appointment };
-  data.appointments.unshift(row);
   await sbInsert("appointments", requestToSupabase(row));
+  data.appointments.unshift(row);
 }
 
 export async function addTrainingRequest(request) {
   const row = { ...request };
-  data.trainingRequests.unshift(row);
   await sbInsert("training_requests", requestToSupabase(row));
+  data.trainingRequests.unshift(row);
 }
 
 export async function addMaintenanceRequest(request) {
   const row = { ...request };
+  await sbInsert("maintenance_requests", requestToSupabase(row));
   data.maintenanceRequests = data.maintenanceRequests || [];
   data.maintenanceRequests.unshift(row);
-  const saved = await sbInsert("maintenance_requests", requestToSupabase(row));
-  if (!saved) localStorage.setItem(STORAGE_KEY, JSON.stringify(localContentSnapshot()));
 }
 
 export async function addMachineComment(comment) {
   const row = { ...comment };
+  const saved = await sbInsert("machine_comments", requestToSupabase(row));
   data.machineComments = data.machineComments || [];
   data.machineComments.unshift(row);
-  const saved = await sbInsert("machine_comments", requestToSupabase(row));
-  if (!saved) throw new Error("Commentaire non synchronise. Verifiez votre connexion.");
   return saved;
 }
 
@@ -741,51 +734,51 @@ export function pendingConfirmationEmail() {
 // ── API admin : mettre à jour (jeton admin requis par le RLS) ──
 export async function updateOrder(id, updates) {
   const item = data.orders.find((o) => String(o.id) === String(id));
-  if (item) Object.assign(item, appRequestFromSupabase(updates));
   await sbUpdate("orders", id, updates, adminAccessToken());
+  if (item) Object.assign(item, appRequestFromSupabase(updates));
 }
 
 export async function updateMessage(id, updates) {
   const item = data.messages.find((m) => String(m.id) === String(id));
-  if (item) Object.assign(item, appRequestFromSupabase(updates));
   await sbUpdate("messages", id, updates, adminAccessToken());
+  if (item) Object.assign(item, appRequestFromSupabase(updates));
 }
 
 export async function updateAppointment(id, updates) {
   const item = data.appointments.find((a) => String(a.id) === String(id));
-  if (item) Object.assign(item, appRequestFromSupabase(updates));
   await sbUpdate("appointments", id, updates, adminAccessToken());
+  if (item) Object.assign(item, appRequestFromSupabase(updates));
 }
 
 export async function updateTrainingRequest(id, updates) {
   const item = data.trainingRequests.find((t) => String(t.id) === String(id));
-  if (item) Object.assign(item, appRequestFromSupabase(updates));
   await sbUpdate("training_requests", id, updates, adminAccessToken());
+  if (item) Object.assign(item, appRequestFromSupabase(updates));
 }
 
 export async function deleteOrder(id) {
-  data.orders = data.orders.filter((o) => String(o.id) !== String(id));
   await sbDelete("orders", id, adminAccessToken());
+  data.orders = data.orders.filter((o) => String(o.id) !== String(id));
 }
 
 export async function deleteMessage(id) {
-  data.messages = data.messages.filter((m) => String(m.id) !== String(id));
   await sbDelete("messages", id, adminAccessToken());
+  data.messages = data.messages.filter((m) => String(m.id) !== String(id));
 }
 
 export async function deleteAppointment(id) {
-  data.appointments = data.appointments.filter((a) => String(a.id) !== String(id));
   await sbDelete("appointments", id, adminAccessToken());
+  data.appointments = data.appointments.filter((a) => String(a.id) !== String(id));
 }
 
 export async function deleteTrainingRequest(id) {
-  data.trainingRequests = data.trainingRequests.filter((t) => String(t.id) !== String(id));
   await sbDelete("training_requests", id, adminAccessToken());
+  data.trainingRequests = data.trainingRequests.filter((t) => String(t.id) !== String(id));
 }
 
 export async function deleteMaintenanceRequest(id) {
-  data.maintenanceRequests = (data.maintenanceRequests || []).filter((t) => String(t.id) !== String(id));
   await sbDelete("maintenance_requests", id, adminAccessToken());
+  data.maintenanceRequests = (data.maintenanceRequests || []).filter((t) => String(t.id) !== String(id));
 }
 
 // ── Auth admin (Supabase Auth — session JWT vérifiable serveur) ─

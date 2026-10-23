@@ -254,7 +254,7 @@ export function chatWidget() {
 export function machineMini(machine) {
   return `
     <article class="machine-mini">
-      <img src="${machine.image}" alt="${escapeHtml(trField(machine, "name"))}">
+      <img src="${escapeHtml(machine.image)}" alt="${escapeHtml(trField(machine, "name"))}">
       <div><strong>${escapeHtml(trField(machine, "name"))}</strong><span>${escapeHtml(trField(machine, "comment"))}</span></div>
     </article>
   `;
@@ -264,7 +264,7 @@ export function machineCard(machine) {
   const pricing = discountedPrice(machine);
   return `
     <article class="item-card">
-      <img src="${machine.image}" alt="${escapeHtml(trField(machine, "name"))}" data-link="/machines/${escapeHtml(machine.id)}" class="click-card" loading="lazy" decoding="async">
+      <img src="${escapeHtml(machine.image)}" alt="${escapeHtml(trField(machine, "name"))}" data-link="/machines/${escapeHtml(machine.id)}" class="click-card" loading="lazy" decoding="async">
       <div class="item-body">
         <span class="pill">${escapeHtml(trField(machine, "category"))}</span>
         <h3 class="click-card" data-link="/machines/${escapeHtml(machine.id)}">${escapeHtml(trField(machine, "name"))}</h3>
@@ -277,7 +277,7 @@ export function machineCard(machine) {
             ${pricing.discount ? `<span class="discount-badge">-${pricing.discount}%</span><del>${money(pricing.price)}</del>` : ""}
             <strong>${money(pricing.finalPrice)}</strong>
           </div>
-          <button class="primary small" data-order="${machine.id}">${t("action.order")}</button>
+          <button class="primary small" data-order="${escapeHtml(machine.id)}">${t("action.order")}</button>
         </div>
         <button class="ghost small machine-detail-link" data-link="/machines/${escapeHtml(machine.id)}">${t("machine.viewDetails")}</button>
       </div>
@@ -303,8 +303,8 @@ export function orderForm(machine) {
 
 export function realisationCard(item) {
   return `
-    <article class="item-card click-card" data-link="/realisations/${item.id}">
-      <img src="${item.image}" alt="${escapeHtml(trField(item, "title"))}" loading="lazy" decoding="async">
+    <article class="item-card click-card" data-link="/realisations/${escapeHtml(item.id)}">
+      <img src="${escapeHtml(item.image)}" alt="${escapeHtml(trField(item, "title"))}" loading="lazy" decoding="async">
       <div class="item-body">
         <h3>${escapeHtml(trField(item, "title"))}</h3>
         <div class="item-copy">
@@ -321,8 +321,8 @@ export function realisationCard(item) {
 
 export function serviceCard(service) {
   return `
-    <article class="service-card click-card" data-link="/services/${service.id}">
-      <img src="${service.image}" alt="${escapeHtml(trField(service, "title"))}" loading="lazy" decoding="async">
+    <article class="service-card click-card" data-link="/services/${escapeHtml(service.id)}">
+      <img src="${escapeHtml(service.image)}" alt="${escapeHtml(trField(service, "title"))}" loading="lazy" decoding="async">
       <div>
         <h3>${escapeHtml(trField(service, "title"))}</h3>
         <p class="item-copy">${escapeHtml(trField(service, service.text ? "text" : "solution"))}</p>

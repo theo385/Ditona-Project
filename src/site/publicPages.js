@@ -3,6 +3,10 @@ import { machineCard, mediaTag, orderForm, publicShell, realisationCard, request
 import { discountedPrice, escapeHtml, money } from "./format.js";
 import { t, tr, trField } from "./i18n.js";
 
+function requestId(prefix) {
+  return `${prefix}-${crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+}
+
 export function homePage() {
   const media = data.homeMedia;
   publicShell(`
@@ -12,21 +16,21 @@ export function homePage() {
           ${mediaTag(item, "DITONA", { eager: index === 0 })}
           <div class="cinema-caption">
             <p class="eyebrow">${t("home.eyebrow")}</p>
-            <h1>${trField(item, "title")}</h1>
-            <p>${trField(item, "subtitle")}</p>
+            <h1>${escapeHtml(trField(item, "title"))}</h1>
+            <p>${escapeHtml(trField(item, "subtitle"))}</p>
           </div>
         </article>
       `).join("")}
       <div class="hero-dots">${media.map((_, index) => `<button class="${index === 0 ? "active" : ""}" data-dot="${index}"></button>`).join("")}</div>
     </section>
     <section class="ticker service-ticker">
-      <div>${[...data.services, ...data.services].map((service) => `<span>${trField(service, "title")}</span>`).join("")}</div>
+      <div>${[...data.services, ...data.services].map((service) => `<span>${escapeHtml(trField(service, "title"))}</span>`).join("")}</div>
     </section>
     <section class="home-proof">
       ${(data.homeProof || []).filter(Boolean).map((item) => `
-        <article data-link="${item.target || "/realisations"}" class="click-card">
+        <article data-link="${escapeHtml(item.target || "/realisations")}" class="click-card">
           ${mediaTag(item)}
-          <div><strong>${trField(item, "title")}</strong><span>${trField(item, "subtitle")}</span></div>
+          <div><strong>${escapeHtml(trField(item, "title"))}</strong><span>${escapeHtml(trField(item, "subtitle"))}</span></div>
         </article>
       `).join("")}
     </section>
@@ -34,9 +38,9 @@ export function homePage() {
       <div class="section-head"><div><p class="eyebrow">${t("home.eyebrow")}</p><h2>${t("home.what")}</h2></div></div>
       <div class="focus-grid">
         ${data.services.slice(0, 4).map((service) => `
-          <article data-link="${service.target || "/services"}" class="click-card">
-            <h3>${trField(service, "title")}</h3>
-            <p>${trField(service, "text")}</p>
+          <article data-link="${escapeHtml(service.target || "/services")}" class="click-card">
+            <h3>${escapeHtml(trField(service, "title"))}</h3>
+            <p>${escapeHtml(trField(service, "text"))}</p>
           </article>
         `).join("")}
       </div>
@@ -64,7 +68,7 @@ export function machinesPage() {
     ${visualTitle("machines", "Catalogue")}
     <section class="toolbar">
       <input id="machine-search" placeholder="Rechercher une machine...">
-      <select id="machine-category"><option value="">${tr("Toutes categories")}</option>${[...new Set(data.machines.map((m) => m.category))].map((c) => `<option value="${c}">${tr(c)}</option>`).join("")}</select>
+      <select id="machine-category"><option value="">${tr("Toutes categories")}</option>${[...new Set(data.machines.map((m) => m.category))].map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(tr(c))}</option>`).join("")}</select>
     </section>
     <section class="section"><div id="machine-list" class="card-grid"></div></section>
   `, "/machines");
@@ -232,7 +236,7 @@ export function machineDetailPage(id) {
     try {
       const user = currentCustomer()?.user;
       await addMachineComment({
-        id: "COM-" + Date.now().toString().slice(-6),
+        id: requestId("COM"),
         machineId: machine.id,
         name: user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "Utilisateur",
         email: user?.email || "",
@@ -275,8 +279,8 @@ export function realisationDetailPage(id) {
   ];
   publicShell(`
     <section class="detail-hero">
-      <img src="${item.image}" alt="${trField(item, "title")}" fetchpriority="high" decoding="async">
-      <div><p class="eyebrow">${t("realisations.title")}</p><h1>${trField(item, "title")}</h1><p>${trField(item, item.comment ? "comment" : "description")}</p></div>
+      <img src="${escapeHtml(item.image)}" alt="${escapeHtml(trField(item, "title"))}" fetchpriority="high" decoding="async">
+      <div><p class="eyebrow">${t("realisations.title")}</p><h1>${escapeHtml(trField(item, "title"))}</h1><p>${escapeHtml(trField(item, item.comment ? "comment" : "description"))}</p></div>
     </section>
     <section class="section detail-layout">
       <button class="ghost" data-link="/realisations">${t("realisations.back")}</button>
@@ -284,9 +288,9 @@ export function realisationDetailPage(id) {
         <article class="panel step-card">
           <span>${index + 1}</span>
           <div>
-            <h2>${trField(step, "title")}</h2>
-            <p>${trField(step, "description")}</p>
-            ${step.image ? `<img src="${step.image}" alt="${trField(step, "title")}" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
+            <h2>${escapeHtml(trField(step, "title"))}</h2>
+            <p>${escapeHtml(trField(step, "description"))}</p>
+            ${step.image ? `<img src="${escapeHtml(step.image)}" alt="${escapeHtml(trField(step, "title"))}" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
           </div>
         </article>
       `).join("")}</div>
@@ -310,26 +314,26 @@ export function maintenanceDetailPage(id) {
   if (!item) return servicesPage();
   publicShell(`
     <section class="detail-hero">
-      <img src="${item.image}" alt="${trField(item, "title")}" fetchpriority="high" decoding="async">
-      <div><p class="eyebrow">${t("maintenance.title")}</p><h1>${trField(item, "title")}</h1><p>${trField(item, item.solution ? "solution" : "text")}</p></div>
+      <img src="${escapeHtml(item.image)}" alt="${escapeHtml(trField(item, "title"))}" fetchpriority="high" decoding="async">
+      <div><p class="eyebrow">${t("maintenance.title")}</p><h1>${escapeHtml(trField(item, "title"))}</h1><p>${escapeHtml(trField(item, item.solution ? "solution" : "text"))}</p></div>
     </section>
     <section class="section detail-layout">
       <button class="ghost" data-link="/services">${t("realisations.back")}</button>
       <div class="panel maintenance-story">
         <h2>${t("maintenance.problem")}</h2>
-        <p>${trField(item, "problem")}</p>
-        ${item.problemImage ? `<img src="${item.problemImage}" alt="Probleme" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
+        <p>${escapeHtml(trField(item, "problem"))}</p>
+        ${item.problemImage ? `<img src="${escapeHtml(item.problemImage)}" alt="Probleme" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
         <h2>${t("maintenance.solution")}</h2>
-        <p>${trField(item, item.solution ? "solution" : "text")}</p>
-        ${item.solutionImage ? `<img src="${item.solutionImage}" alt="Solution" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
+        <p>${escapeHtml(trField(item, item.solution ? "solution" : "text"))}</p>
+        ${item.solutionImage ? `<img src="${escapeHtml(item.solutionImage)}" alt="Solution" style="width:100%; max-width:600px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
       </div>
       <div class="timeline">${(item.history || []).map((row) => `
         <article class="panel step-card">
-          <span>${row.date || ""}</span>
+          <span>${escapeHtml(row.date || "")}</span>
           <div>
-            <h2>${trField(row, "problem")}</h2>
-            <p>${trField(row, "solution")}</p>
-            ${row.image ? `<img src="${row.image}" alt="Intervention" style="width:100%; max-width:500px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
+            <h2>${escapeHtml(trField(row, "problem"))}</h2>
+            <p>${escapeHtml(trField(row, "solution"))}</p>
+            ${row.image ? `<img src="${escapeHtml(row.image)}" alt="Intervention" style="width:100%; max-width:500px; border-radius:8px; margin-top:16px;" loading="lazy" decoding="async">` : ""}
           </div>
         </article>
       `).join("")}</div>
@@ -417,7 +421,7 @@ export function maintenanceRequestPage() {
     event.preventDefault();
     const fd = new FormData(event.target);
     await addMaintenanceRequest({
-      id: "MNT-" + Date.now().toString().slice(-6),
+      id: requestId("MNT"),
       name: fd.get("name"),
       firstname: fd.get("firstname"),
       phone: fd.get("phone"),
@@ -442,14 +446,14 @@ export function formationPage() {
     ${visualTitle("formation", "Formation")}
     <section class="section">
       <div class="gallery-grid">${(data.formations || []).map((formation) => `
-        <article class="item-card click-card" data-link="/formation/${formation.id}">
-          <img src="${formation.image}" alt="${trField(formation, "title")}" loading="lazy" decoding="async">
+        <article class="item-card click-card" data-link="/formation/${escapeHtml(formation.id)}">
+          <img src="${escapeHtml(formation.image)}" alt="${escapeHtml(trField(formation, "title"))}" loading="lazy" decoding="async">
           <div class="item-body">
             <span class="pill">${formation.available ? t("formations.available") : t("formations.unavailable")}</span>
-            <h3>${trField(formation, "title")}</h3>
-            <p>${trField(formation, "description")}</p>
-            <p class="comment">${trField(formation, "duration")}</p>
-            <button class="primary small" ${formation.available ? `data-link="/formation/${formation.id}"` : "disabled"}>${t("formations.apply")}</button>
+            <h3>${escapeHtml(trField(formation, "title"))}</h3>
+            <p>${escapeHtml(trField(formation, "description"))}</p>
+            <p class="comment">${escapeHtml(trField(formation, "duration"))}</p>
+            <button class="primary small" ${formation.available ? `data-link="/formation/${escapeHtml(formation.id)}"` : "disabled"}>${t("formations.apply")}</button>
           </div>
         </article>
       `).join("")}</div>
@@ -464,9 +468,9 @@ export function trainingApplyPage(id) {
     ${visualTitle("formation", "Formation")}
     <section class="section formation-only">
       <form id="formation-form" class="panel form-panel">
-        <h2>${t("formations.applyTitle")}: ${trField(formation, "title")}</h2>
+        <h2>${t("formations.applyTitle")}: ${escapeHtml(trField(formation, "title"))}</h2>
         ${requestIdentityFields()}
-        <input name="training" type="hidden" value="${formation.title}">
+        <input name="training" type="hidden" value="${escapeHtml(formation.title)}">
         <label>${tr("Niveau actuel")}<select name="level"><option>${tr("Debutant")}</option><option>${tr("Intermediaire")}</option><option>${tr("Avance")}</option><option>${tr("Entreprise / equipe")}</option></select></label>
         <label>${tr("Objectif")}<textarea name="message" rows="5" required placeholder="${tr("Expliquez votre besoin, votre ville, le nombre de personnes")}"></textarea></label>
         <button class="primary" type="submit">${tr("Envoyer la demande de formation")}</button>
@@ -476,7 +480,7 @@ export function trainingApplyPage(id) {
   document.querySelector("#formation-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const fd = Object.fromEntries(new FormData(event.target));
-    await addTrainingRequest({ id: "FOR-" + Date.now().toString().slice(-6), ...fd, subject: `Formation: ${fd.training}`, status: "Nouveau", reply: "", seenAt: "", createdAt: today() });
+    await addTrainingRequest({ id: requestId("FOR"), ...fd, subject: `Formation: ${fd.training}`, status: "Nouveau", reply: "", seenAt: "", createdAt: today() });
     event.target.innerHTML = `<div class="success"><h2>${tr("Demande de formation envoyee")}</h2><button class="primary" data-link="/">${tr("Retour accueil")}</button></div>`;
     window.ditonaBindGlobal();
   });
@@ -645,7 +649,7 @@ export async function resetPasswordPage() {
       <section class="section login-public">
         <div class="section-head"><div><p class="eyebrow">Erreur</p><h1>Lien invalide</h1></div></div>
         <div class="panel form-panel" style="max-width: 500px; margin: 0 auto; text-align: center;">
-          <p style="color: var(--muted); margin-bottom: 1.5rem;">${err.message || "Ce lien est invalide ou a expire."}</p>
+          <p style="color: var(--muted); margin-bottom: 1.5rem;">${escapeHtml(err.message || "Ce lien est invalide ou a expire.")}</p>
           <button class="primary" data-link="/forgot-password">Demander un nouveau lien</button>
         </div>
       </section>
@@ -786,7 +790,7 @@ export function appointmentPage() {
   `, "/rendez-vous");
   document.querySelector("#appointment-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    await addAppointment({ id: "RDV-" + Date.now().toString().slice(-6), ...Object.fromEntries(new FormData(event.target)), status: "Nouveau", reply: "", seenAt: "", createdAt: today() });
+    await addAppointment({ id: requestId("RDV"), ...Object.fromEntries(new FormData(event.target)), status: "Nouveau", reply: "", seenAt: "", createdAt: today() });
     event.target.innerHTML = `<div class="success"><h2>Rendez-vous envoye</h2><button class="primary" data-link="/">Retour accueil</button></div>`;
     window.ditonaBindGlobal();
   });
@@ -798,7 +802,7 @@ export function contactPage(subject = "") {
     <section class="section contact-layout">
       <form id="contact-form" class="panel form-panel">
         ${requestIdentityFields()}
-        <label>Sujet<input name="subject" required value="${subject}"></label>
+        <label>Sujet<input name="subject" required value="${escapeHtml(subject)}"></label>
         <label>Message<textarea name="message" required rows="6"></textarea></label>
         <button class="primary" type="submit">Envoyer le message</button>
       </form>
@@ -812,7 +816,7 @@ export function contactPage(subject = "") {
   `, "/contact");
   document.querySelector("#contact-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    await addMessage({ id: "MSG-" + Date.now().toString().slice(-6), ...Object.fromEntries(new FormData(event.target)), reply: "", status: "Nouveau", seenAt: "", createdAt: today() });
+    await addMessage({ id: requestId("MSG"), ...Object.fromEntries(new FormData(event.target)), reply: "", status: "Nouveau", seenAt: "", createdAt: today() });
     event.target.innerHTML = `<div class="success"><h2>Message envoye</h2><button class="primary" data-link="/">Retour accueil</button></div>`;
     window.ditonaBindGlobal();
   });
@@ -833,7 +837,7 @@ export function orderMachine(id) {
     event.preventDefault();
     const fd = Object.fromEntries(new FormData(event.target));
     const client = `${fd.name} ${fd.firstname}`.trim();
-    await addOrder({ id: "CMD-" + Date.now().toString().slice(-6), machineId: machine.id, machine: machine.name, price: pricing.finalPrice, client, name: fd.name, firstname: fd.firstname, email: fd.email || "", phone: fd.phone, note: fd.message || "Demande creee depuis le site.", status: "Nouvelle", reply: "", seenAt: "", createdAt: today() });
+    await addOrder({ id: requestId("CMD"), machineId: machine.id, machine: machine.name, price: pricing.finalPrice, client, name: fd.name, firstname: fd.firstname, email: fd.email || "", phone: fd.phone, note: fd.message || "Demande creee depuis le site.", status: "Nouvelle", reply: "", seenAt: "", createdAt: today() });
     document.querySelector("#order-form").innerHTML = `<div class="success"><h2>Commande envoyee</h2><button type="button" class="primary" data-close-modal>Fermer</button></div>`;
     document.querySelector("[data-close-modal]").addEventListener("click", closeModal);
   });

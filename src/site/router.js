@@ -52,6 +52,10 @@ const ADMIN_BASE = "/27ditona@ad07";
 const PUBLIC_LIMIT_MS = 120000;
 const GUEST_STARTED_KEY = "ditona_guest_started_at";
 
+function requestId(prefix) {
+  return `${prefix}-${crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+}
+
 export function go(path) {
   history.pushState({}, "", path);
   render();
@@ -174,7 +178,7 @@ function bindChatbot() {
     event.preventDefault();
     const text = new FormData(event.target).get("text").trim();
     const autoReply = chatbotAnswer(text);
-    addMessage({ id: "MSG-" + Date.now().toString().slice(-6), name: "Visiteur chatbot", email: "", phone: "", subject: "Chatbot", message: text, autoReply, reply: "", status: "Nouveau", seenAt: "", createdAt: today() });
+    addMessage({ id: requestId("MSG"), name: "Visiteur chatbot", email: "", phone: "", subject: "Chatbot", message: text, autoReply, reply: "", status: "Nouveau", seenAt: "", createdAt: today() }).catch((error) => console.error("[chatbot] message non envoyé", error));
     document.querySelector("[data-chat-log]").insertAdjacentHTML(
       "beforeend",
       `<p class="user">${escapeHtml(text)}</p><p class="bot">${escapeHtml(autoReply)}</p>`

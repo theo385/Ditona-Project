@@ -1,0 +1,54 @@
+-- Apply this migration once in Supabase SQL Editor after deploying the code.
+-- It replaces the legacy allow_all_* policies from the original schema.
+BEGIN;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.training_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.maintenance_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.machine_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.site_content ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customer_accounts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS allow_all_orders ON public.orders;
+DROP POLICY IF EXISTS allow_all_messages ON public.messages;
+DROP POLICY IF EXISTS allow_all_appointments ON public.appointments;
+DROP POLICY IF EXISTS allow_all_training ON public.training_requests;
+DROP POLICY IF EXISTS allow_all_maintenance ON public.maintenance_requests;
+DROP POLICY IF EXISTS allow_all_machine_comments ON public.machine_comments;
+DROP POLICY IF EXISTS allow_all_site_content ON public.site_content;
+DROP POLICY IF EXISTS allow_all_customer_accounts ON public.customer_accounts;
+DROP POLICY IF EXISTS allow_public_media_read ON storage.objects;
+DROP POLICY IF EXISTS allow_public_media_insert ON storage.objects;
+DROP POLICY IF EXISTS allow_public_media_update ON storage.objects;
+DROP POLICY IF EXISTS allow_public_media_delete ON storage.objects;
+
+CREATE TABLE IF NOT EXISTS public.admin_profiles (user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+ALTER TABLE public.admin_profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS admin_read_own_profile ON public.admin_profiles;
+CREATE POLICY admin_read_own_profile ON public.admin_profiles FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE OR REPLACE FUNCTION public.is_admin() RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$ SELECT EXISTS (SELECT 1 FROM public.admin_profiles WHERE user_id = auth.uid()) $$;
+
+CREATE POLICY public_insert_orders ON public.orders FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY admin_manage_orders ON public.orders FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY public_insert_messages ON public.messages FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY admin_manage_messages ON public.messages FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY public_insert_appointments ON public.appointments FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY admin_manage_appointments ON public.appointments FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY public_insert_training_requests ON public.training_requests FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY admin_manage_training_requests ON public.training_requests FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY public_insert_maintenance_requests ON public.maintenance_requests FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY admin_manage_maintenance_requests ON public.maintenance_requests FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY public_read_comments ON public.machine_comments FOR SELECT TO anon, authenticated USING (status = 'Publie');
+CREATE POLICY public_insert_comments ON public.machine_comments FOR INSERT TO anon, authenticated WITH CHECK (status = 'Publie');
+CREATE POLICY admin_manage_comments ON public.machine_comments FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY public_read_site_content ON public.site_content FOR SELECT TO anon, authenticated USING (key = 'main');
+CREATE POLICY admin_manage_site_content ON public.site_content FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY customer_read_own_account ON public.customer_accounts FOR SELECT TO authenticated USING (id = auth.uid()::text);
+CREATE POLICY customer_insert_own_account ON public.customer_accounts FOR INSERT TO authenticated WITH CHECK (id = auth.uid()::text);
+CREATE POLICY customer_update_own_account ON public.customer_accounts FOR UPDATE TO authenticated USING (id = auth.uid()::text) WITH CHECK (id = auth.uid()::text);
+CREATE POLICY admin_manage_customer_accounts ON public.customer_accounts FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY media_public_read ON storage.objects FOR SELECT TO anon, authenticated USING (bucket_id = 'ditona-media');
+CREATE POLICY media_admin_insert ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'ditona-media' AND public.is_admin());
+CREATE POLICY media_admin_update ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'ditona-media' AND public.is_admin()) WITH CHECK (bucket_id = 'ditona-media' AND public.is_admin());
+CREATE POLICY media_admin_delete ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'ditona-media' AND public.is_admin());
+COMMIT;

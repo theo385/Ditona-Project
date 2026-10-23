@@ -129,16 +129,50 @@ DROP POLICY IF EXISTS allow_public_media_insert ON storage.objects;
 DROP POLICY IF EXISTS allow_public_media_update ON storage.objects;
 DROP POLICY IF EXISTS allow_public_media_delete ON storage.objects;
 
-CREATE POLICY allow_all_orders ON orders FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY allow_all_messages ON messages FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY allow_all_appointments ON appointments FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY allow_all_training ON training_requests FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY allow_all_maintenance ON maintenance_requests FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY allow_all_machine_comments ON machine_comments FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY allow_all_site_content ON site_content FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY allow_all_customer_accounts ON customer_accounts FOR ALL USING (true) WITH CHECK (true);
+-- One row is created manually for each administrator, with their auth.users id.
+CREATE TABLE IF NOT EXISTS admin_profiles (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE admin_profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS admin_read_own_profile ON admin_profiles;
+CREATE POLICY admin_read_own_profile ON admin_profiles FOR SELECT TO authenticated USING (user_id = auth.uid());
 
-CREATE POLICY allow_public_media_read ON storage.objects FOR SELECT USING (bucket_id = 'ditona-media');
-CREATE POLICY allow_public_media_insert ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'ditona-media');
-CREATE POLICY allow_public_media_update ON storage.objects FOR UPDATE USING (bucket_id = 'ditona-media') WITH CHECK (bucket_id = 'ditona-media');
-CREATE POLICY allow_public_media_delete ON storage.objects FOR DELETE USING (bucket_id = 'ditona-media');
+-- SECURITY DEFINER avoids an RLS recursion while policies determine whether a
+-- signed-in user is an administrator. The fixed search_path prevents search
+-- path injection into this privileged function.
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$ SELECT EXISTS (SELECT 1 FROM public.admin_profiles WHERE user_id = auth.uid()) $$;
+
+-- Forms are insert-only for visitors. Requests and customer PII can only be
+-- read, changed, or deleted by a signed-in administrator.
+CREATE POLICY public_insert_orders ON orders FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY admin_manage_orders ON orders FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY public_insert_messages ON messages FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY admin_manage_messages ON messages FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY public_insert_appointments ON appointments FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY admin_manage_appointments ON appointments FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY public_insert_training_requests ON training_requests FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY admin_manage_training_requests ON training_requests FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY public_insert_maintenance_requests ON maintenance_requests FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY admin_manage_maintenance_requests ON maintenance_requests FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+
+CREATE POLICY public_read_comments ON machine_comments FOR SELECT TO anon, authenticated USING (status = 'Publie');
+CREATE POLICY public_insert_comments ON machine_comments FOR INSERT TO anon, authenticated WITH CHECK (status = 'Publie');
+CREATE POLICY admin_manage_comments ON machine_comments FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+
+CREATE POLICY public_read_site_content ON site_content FOR SELECT TO anon, authenticated USING (key = 'main');
+CREATE POLICY admin_manage_site_content ON site_content FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+
+CREATE POLICY customer_read_own_account ON customer_accounts FOR SELECT TO authenticated USING (id = auth.uid()::text);
+CREATE POLICY customer_insert_own_account ON customer_accounts FOR INSERT TO authenticated WITH CHECK (id = auth.uid()::text);
+CREATE POLICY customer_update_own_account ON customer_accounts FOR UPDATE TO authenticated USING (id = auth.uid()::text) WITH CHECK (id = auth.uid()::text);
+CREATE POLICY admin_manage_customer_accounts ON customer_accounts FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+
+-- Public media may be displayed by the site, but only admins can upload,
+-- replace, or delete it. These policy names match store.js.
+CREATE POLICY media_public_read ON storage.objects FOR SELECT TO anon, authenticated USING (bucket_id = 'ditona-media');
+CREATE POLICY media_admin_insert ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'ditona-media' AND is_admin());
+CREATE POLICY media_admin_update ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'ditona-media' AND is_admin()) WITH CHECK (bucket_id = 'ditona-media' AND is_admin());
+CREATE POLICY media_admin_delete ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'ditona-media' AND is_admin());
